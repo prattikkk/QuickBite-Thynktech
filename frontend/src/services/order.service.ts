@@ -9,6 +9,7 @@ import {
   OrderListResponse,
   OrderStatusUpdateRequest,
   PageRequest,
+  TimelineEntry,
 } from '../types';
 
 export const orderService = {
@@ -89,6 +90,15 @@ export const orderService = {
    */
   getOrderStatusHistory: async (orderId: string): Promise<Array<{ status: string; timestamp: string; note: string }>> => {
     const response = await api.get<any, any>(`/orders/${orderId}/status-history`);
+    return response;
+  },
+
+  /**
+   * Get full audit timeline for an order (admin).
+   * GET /admin/orders/:orderId/timeline
+   */
+  getOrderTimeline: async (orderId: string): Promise<TimelineEntry[]> => {
+    const response = await api.get<any, TimelineEntry[]>(`/admin/orders/${orderId}/timeline`);
     return response;
   },
 };

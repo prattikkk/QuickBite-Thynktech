@@ -47,7 +47,13 @@ export type OrderStatus =
   | 'REJECTED';
 
 export type PaymentMethod = 'CASH_ON_DELIVERY' | 'CARD' | 'UPI';
-export type PaymentStatus = 'PENDING' | 'COMPLETED' | 'FAILED' | 'REFUNDED';
+export type PaymentStatus =
+  | 'PENDING'
+  | 'AUTHORIZED'
+  | 'CAPTURED'
+  | 'FAILED'
+  | 'REFUNDED'
+  | 'CANCELLED';
 
 export interface OrderItemDTO {
   id?: string;
@@ -83,4 +89,29 @@ export interface OrderListResponse {
 export interface OrderStatusUpdateRequest {
   status: OrderStatus;
   note?: string;
+}
+
+/**
+ * Timeline entry from GET /api/admin/orders/:id/timeline
+ */
+export interface TimelineEntry {
+  id: string;
+  eventType: string;
+  oldStatus?: string;
+  newStatus?: string;
+  actorId?: string;
+  actorRole: string;
+  meta?: Record<string, unknown>;
+  createdAt: string;
+}
+
+/**
+ * Structured error returned when an invalid order transition is attempted (400).
+ */
+export interface TransitionError {
+  message: string;
+  status: number;
+  currentStatus?: string;
+  targetStatus?: string;
+  reason?: string;
 }

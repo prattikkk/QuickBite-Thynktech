@@ -58,9 +58,9 @@
 
 ---
 
-## 5. Missing Tests That Must Be Added for Day 1–5 Tasks
+## 5. Missing Tests That Must Be Added for Phase 1–5 Tasks
 
-### Day 1: Reliability Refactor
+### Phase 1: Reliability Refactor
 
 | # | Test Needed | Type | Current State |
 |---|---|---|---|
@@ -113,7 +113,7 @@
 
 ---
 
-## 6. Database Schema Gaps (for Day 1)
+## 6. Database Schema Gaps (for Phase 1)
 
 | Table | Exists? | Gap |
 |---|---|---|
@@ -147,12 +147,12 @@
 
 ---
 
-## Summary — Priority Fixes Before Day 1
+## Summary — Priority Fixes Before Phase 1
 
 1. **Fix CI JDK version**: 17 → 21 to match `pom.xml`
 2. **Fix `auth.service.ts → getCurrentUser()`**: Remove or add backend endpoint
 3. **Fix `address.service.ts → updateAddress()`**: Remove or add backend PATCH endpoint
 4. **Fix `PaymentStatus` enum mismatch**: Frontend `COMPLETED` → `CAPTURED` / `AUTHORIZED`
 5. **Add retry infrastructure for webhooks**: Currently synchronous, needs async queue + retry
-6. **Add `idempotency_keys` table**: Required for Day 1 idempotency feature
+6. **Add `idempotency_keys` table**: Required for Phase 1 idempotency feature
 7. **Extend `webhook_events` with retry columns**: `attempts`, `last_error`

@@ -1,9 +1,20 @@
 /**
- * Axios instance with interceptors for auth and error handling
+ * Axios instance with interceptors for auth, idempotency, and error handling
  */
 
 import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { ApiError } from '../types';
+
+/**
+ * Generate a unique idempotency key (UUID v4).
+ * Used to prevent duplicate order/payment creation on retries.
+ */
+function generateIdempotencyKey(): string {
+  return crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+/** Endpoints that require an Idempotency-Key header on POST */
+const IDEMPOTENT_ENDPOINTS = ['/orders', '/payments/intent'];
 
 // Create axios instance with default config
 const api: AxiosInstance = axios.create({
@@ -14,13 +25,25 @@ const api: AxiosInstance = axios.create({
   },
 });
 
-// Request interceptor to attach JWT token
+// Request interceptor to attach JWT token and idempotency key
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const token = localStorage.getItem('quickbite_token');
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
+    // Attach Idempotency-Key for critical POST endpoints
+    if (
+      config.method === 'post' &&
+      config.headers &&
+      IDEMPOTENT_ENDPOINTS.some((ep) => config.url?.startsWith(ep))
+    ) {
+      if (!config.headers['Idempotency-Key']) {
+        config.headers['Idempotency-Key'] = generateIdempotencyKey();
+      }
+    }
+
     return config;
   },
   (error) => {

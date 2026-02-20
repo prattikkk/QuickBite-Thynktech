@@ -9,3 +9,4 @@ export { default as orderService } from './order.service';
 export { default as paymentService } from './payment.service';
 export { default as addressService } from './address.service';
 export { default as driverService } from './driver.service';
+export { default as adminService } from './admin.service';

@@ -18,6 +18,7 @@ import OrderTrack from './pages/OrderTrack';
 import MyOrders from './pages/MyOrders';
 import VendorDashboard from './pages/VendorDashboard';
 import DriverDashboard from './pages/DriverDashboard';
+import AdminOrderTimeline from './pages/AdminOrderTimeline';
 
 function App() {
   const loadFromStorage = useAuthStore((state) => state.loadFromStorage);
@@ -106,6 +107,16 @@ function App() {
               element={
                 <ProtectedRoute requiredRole="DRIVER">
                   <DriverDashboard />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Admin routes */}
+            <Route
+              path="/admin/orders/:orderId/timeline"
+              element={
+                <ProtectedRoute requiredRole="ADMIN">
+                  <AdminOrderTimeline />
                 </ProtectedRoute>
               }
             />
