@@ -1,0 +1,1009 @@
+{
+  "info": {
+    "name": "QuickBite E2E Test Suite",
+    "description": "Comprehensive end-to-end API tests for QuickBite food delivery platform",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "1.0.0"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "vendorToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "driverToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "refreshToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "vendorId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "vendorEmail",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "menuItemId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "orderId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "paymentId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "driverId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health Check",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test(\"Backend is UP\", function () {",
+              "    var jsonData = pm.response.json();",
+              "    pm.expect(jsonData.status).to.eql(\"UP\");",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/actuator/health",
+          "host": ["{{baseUrl}}"],
+          "path": ["actuator", "health"]
+        }
+      }
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register Customer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 or 201\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "});",
+                  "",
+                  "pm.test(\"Response has access token\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data).to.have.property('accessToken');",
+                  "    pm.expect(jsonData.data).to.have.property('refreshToken');",
+                  "    pm.collectionVariables.set(\"accessToken\", jsonData.data.accessToken);",
+                  "    pm.collectionVariables.set(\"refreshToken\", jsonData.data.refreshToken);",
+                  "    pm.collectionVariables.set(\"userId\", jsonData.data.userId);",
+                  "});",
+                  "",
+                  "pm.test(\"User has customer role\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data.role).to.eql('CUSTOMER');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"customer_{{$timestamp}}@test.com\",\n  \"password\": \"Test@1234\",\n  \"name\": \"Test Customer\",\n  \"phone\": \"+1234567890\",\n  \"roleName\": \"CUSTOMER\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "Register Vendor",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 or 201\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "});",
+                  "",
+                  "pm.test(\"User has vendor role\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data.role).to.eql('VENDOR');",
+                  "    pm.collectionVariables.set(\"vendorToken\", jsonData.data.accessToken);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"vendor_{{$timestamp}}@test.com\",\n  \"password\": \"Test@1234\",\n  \"name\": \"Test Vendor\",\n  \"phone\": \"+1234567891\",\n  \"roleName\": \"VENDOR\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "Register Driver",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 or 201\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "});",
+                  "",
+                  "pm.test(\"User has driver role\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data.role).to.eql('DRIVER');",
+                  "    pm.collectionVariables.set(\"driverId\", jsonData.data.userId);",
+                  "    pm.collectionVariables.set(\"driverToken\", jsonData.data.accessToken);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"driver_{{$timestamp}}@test.com\",\n  \"password\": \"Test@1234\",\n  \"name\": \"Test Driver\",\n  \"phone\": \"+1234567892\",\n  \"roleName\": \"DRIVER\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "Login Customer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Has valid tokens\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data.accessToken).to.be.a('string').and.not.empty;",
+                  "    pm.expect(jsonData.data.refreshToken).to.be.a('string').and.not.empty;",
+                  "    pm.collectionVariables.set(\"accessToken\", jsonData.data.accessToken);",
+                  "    pm.collectionVariables.set(\"refreshToken\", jsonData.data.refreshToken);",
+                  "    pm.collectionVariables.set(\"userId\", jsonData.data.userId);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"e2e_customer@test.com\",\n  \"password\": \"Test@1234\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Login Vendor",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Vendor token saved\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data.accessToken).to.be.a('string').and.not.empty;",
+                  "    pm.collectionVariables.set(\"vendorToken\", jsonData.data.accessToken);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"e2e_vendor@test.com\",\n  \"password\": \"Test@1234\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Login Driver",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Driver token saved\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data.accessToken).to.be.a('string').and.not.empty;",
+                  "    pm.collectionVariables.set(\"driverToken\", jsonData.data.accessToken);",
+                  "    pm.collectionVariables.set(\"driverId\", jsonData.data.userId);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"e2e_driver@test.com\",\n  \"password\": \"Test@1234\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"New access token received\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data.accessToken).to.be.a('string').and.not.empty;",
+                  "    pm.collectionVariables.set(\"accessToken\", jsonData.data.accessToken);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/refresh",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "refresh"]
+            }
+          }
+        },
+        {
+          "name": "Protected Endpoint Without Token (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 401 or 403\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([401, 403]);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "users", "me"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Vendors",
+      "item": [
+        {
+          "name": "List All Vendors",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response is an array\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data).to.be.an('array');",
+                  "});",
+                  "",
+                  "pm.test(\"Store e2e vendor ID\", function () {",
+                  "    var vendors = pm.response.json();",
+                  "    // Find the e2e test vendor by known fixed ID so that subsequent",
+                  "    // vendor-owned operations (create menu item, accept order) use the",
+                  "    // correct restaurant owned by e2e_vendor@test.com.",
+                  "    var e2eVendor = vendors.data.find(function(v) {",
+                  "        return v.id === 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';",
+                  "    });",
+                  "    if (e2eVendor) {",
+                  "        pm.collectionVariables.set(\"vendorId\", e2eVendor.id);",
+                  "    } else if (vendors.data.length > 0) {",
+                  "        pm.collectionVariables.set(\"vendorId\", vendors.data[0].id);",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/vendors",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "vendors"]
+            }
+          }
+        },
+        {
+          "name": "Get Vendor By ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Vendor has required fields\", function () {",
+                  "    var vendor = pm.response.json();",
+                  "    pm.expect(vendor.data).to.have.property('id');",
+                  "    pm.expect(vendor.data).to.have.property('name');",
+                  "    pm.expect(vendor.data).to.have.property('rating');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/vendors/{{vendorId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "vendors", "{{vendorId}}"]
+            }
+          }
+        },
+        {
+          "name": "Search Vendors",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Results contain search term\", function () {",
+                  "    var results = pm.response.json();",
+                  "    pm.expect(results.data).to.be.an('array');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/vendors/search?query=pizza",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "vendors", "search"],
+              "query": [
+                {
+                  "key": "query",
+                  "value": "pizza"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Menu Items",
+      "item": [
+        {
+          "name": "Create Menu Item (Vendor)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 or 201\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "});",
+                  "",
+                  "pm.test(\"Menu item created\", function () {",
+                  "    var item = pm.response.json();",
+                  "    pm.expect(item.data).to.have.property('id');",
+                  "    pm.expect(item.data.name).to.eql('Test Item');",
+                  "    pm.collectionVariables.set(\"menuItemId\", item.data.id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{vendorToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test Item\",\n  \"description\": \"Test menu item for E2E\",\n  \"priceCents\": 1299,\n  \"category\": \"MAIN\",\n  \"available\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/vendors/{{vendorId}}/menu",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "vendors", "{{vendorId}}", "menu"]
+            }
+          }
+        },
+        {
+          "name": "Get Menu Items By Vendor",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response is an array\", function () {",
+                  "    var items = pm.response.json();",
+                  "    pm.expect(items.data).to.be.an('array');",
+                  "    if (items.data.length > 0 && !pm.collectionVariables.get('menuItemId')) {",
+                  "        pm.collectionVariables.set('menuItemId', items.data[0].id);",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/vendors/{{vendorId}}/menu",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "vendors", "{{vendorId}}", "menu"]
+            }
+          }
+        },
+        {
+          "name": "Update Menu Item",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Price updated\", function () {",
+                  "    var item = pm.response.json();",
+                  "    pm.expect(item.data.priceCents).to.eql(1499);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{vendorToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test Item Updated\",\n  \"description\": \"Updated description\",\n  \"priceCents\": 1499,\n  \"category\": \"MAIN\",\n  \"available\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/menu-items/{{menuItemId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "menu-items", "{{menuItemId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Orders",
+      "item": [
+        {
+          "name": "Create Order (Customer)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 or 201\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "});",
+                  "",
+                  "pm.test(\"Order created with correct status\", function () {",
+                  "    var order = pm.response.json();",
+                  "    pm.expect(order.data).to.have.property('id');",
+                  "    pm.expect(order.data.status).to.eql('PLACED');",
+                  "    pm.collectionVariables.set(\"orderId\", order.data.id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    {\n      \"menuItemId\": \"{{menuItemId}}\",\n      \"quantity\": 2,\n      \"specialInstructions\": \"Extra spicy\"\n    }\n  ],\n  \"addressId\": \"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa\",\n  \"paymentMethod\": \"CARD\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/orders",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "orders"]
+            }
+          }
+        },
+        {
+          "name": "Get Order By ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Order has correct ID\", function () {",
+                  "    var order = pm.response.json();",
+                  "    pm.expect(order.data.id).to.eql(pm.collectionVariables.get(\"orderId\"));",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/{{orderId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "orders", "{{orderId}}"]
+            }
+          }
+        },
+        {
+          "name": "Accept Order (Vendor)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Order status changed to ACCEPTED\", function () {",
+                  "    var order = pm.response.json();",
+                  "    pm.expect(order.data.status).to.eql('ACCEPTED');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{vendorToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/{{orderId}}/accept",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "orders", "{{orderId}}", "accept"]
+            }
+          }
+        },
+        {
+          "name": "Update Order Status (Vendor)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Order status updated\", function () {",
+                  "    var order = pm.response.json();",
+                  "    pm.expect(order.data.status).to.be.oneOf(['PREPARING', 'READY', 'DELIVERED']);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{vendorToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"PREPARING\",\n  \"note\": \"Food is being prepared\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/{{orderId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "orders", "{{orderId}}", "status"]
+            }
+          }
+        },
+        {
+          "name": "Assign Driver to Order",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Driver assigned\", function () {",
+                  "    var order = pm.response.json();",
+                  "    pm.expect(order.data.driverId).to.exist;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{driverToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/{{orderId}}/assign/{{driverId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "orders", "{{orderId}}", "assign", "{{driverId}}"]
+            }
+          }
+        },
+        {
+          "name": "Get Order Status History",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Status history is array with entries\", function () {",
+                  "    var history = pm.response.json();",
+                  "    pm.expect(history.data).to.be.an('array');",
+                  "    pm.expect(history.data.length).to.be.greaterThan(0);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/{{orderId}}/status-history",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "orders", "{{orderId}}", "status-history"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Payments",
+      "item": [
+        {
+          "name": "Create Payment Intent",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 or 201\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "});",
+                  "",
+                  "pm.test(\"Payment intent created\", function () {",
+                  "    var payment = pm.response.json();",
+                  "    pm.expect(payment.data).to.have.property('providerPaymentId');",
+                  "    pm.expect(payment.data).to.have.property('clientSecret');",
+                  "    pm.expect(payment.data.status).to.be.oneOf(['PENDING', 'AUTHORIZED']);",
+                  "    pm.collectionVariables.set(\"paymentId\", payment.data.id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"{{orderId}}\",\n  \"currency\": \"USD\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/intent",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "payments", "intent"]
+            }
+          }
+        },
+        {
+          "name": "Get Payment By ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Payment details retrieved\", function () {",
+                  "    var payment = pm.response.json();",
+                  "    pm.expect(payment.data.id).to.eql(pm.collectionVariables.get(\"paymentId\"));",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/{{paymentId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "payments", "{{paymentId}}"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

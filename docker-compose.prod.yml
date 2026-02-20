@@ -1,0 +1,97 @@
+# ─────────────────────────────────────────────────────────────────
+# QuickBite — Production / Staging Compose
+# Usage:  docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
+# ─────────────────────────────────────────────────────────────────
+version: "3.8"
+
+services:
+  # ── PostgreSQL ────────────────────────────────────────────────
+  postgres:
+    image: postgres:13
+    restart: always
+    environment:
+      POSTGRES_USER:     ${DB_USERNAME:-dbuser}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-dbpass}
+      POSTGRES_DB:       ${DB_NAME:-quickbite}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-dbuser}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - quickbite
+
+  # ── Redis (session / WebSocket broker) ────────────────────────
+  redis:
+    image: redis:6-alpine
+    restart: always
+    command: redis-server --appendonly yes
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - quickbite
+
+  # ── Backend (Spring Boot) ─────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: ${REGISTRY:-ghcr.io}/${REPO:-quickbite}/backend:${TAG:-latest}
+    restart: always
+    environment:
+      SPRING_PROFILES_ACTIVE:       prod
+      SPRING_DATASOURCE_URL:        jdbc:postgresql://postgres:5432/${DB_NAME:-quickbite}
+      SPRING_DATASOURCE_USERNAME:   ${DB_USERNAME:-dbuser}
+      SPRING_DATASOURCE_PASSWORD:   ${DB_PASSWORD:-dbpass}
+      SPRING_FLYWAY_ENABLED:        "true"
+      JWT_SECRET:                   ${JWT_SECRET}
+      PAYMENT_PROVIDER:             ${PAYMENT_PROVIDER:-generic}
+      PAYMENT_API_KEY:              ${PAYMENT_API_KEY:-}
+      PAYMENT_API_SECRET:           ${PAYMENT_API_SECRET:-}
+      PAYMENT_WEBHOOK_SECRET:       ${PAYMENT_WEBHOOK_SECRET}
+      CORS_ORIGINS:                 ${CORS_ORIGINS:-http://localhost}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - quickbite
+
+  # ── Frontend (Nginx + Vite build) ─────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: ${REGISTRY:-ghcr.io}/${REPO:-quickbite}/frontend:${TAG:-latest}
+    restart: always
+    ports:
+      - "${FRONTEND_PORT:-80}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - quickbite
+
+volumes:
+  pgdata:
+  redisdata:
+
+networks:
+  quickbite:
+    driver: bridge

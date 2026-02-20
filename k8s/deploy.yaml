@@ -1,0 +1,227 @@
+# ─────────────────────────────────────────────────────────────────
+# QuickBite — Kubernetes Manifests
+# Apply:  kubectl apply -f k8s/
+# ─────────────────────────────────────────────────────────────────
+
+# ── Namespace ────────────────────────────────────────────────────
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: quickbite
+
+---
+# ── Secrets (create via kubectl or sealed-secrets) ───────────────
+# kubectl create secret generic quickbite-secrets -n quickbite \
+#   --from-literal=DB_USERNAME=dbuser \
+#   --from-literal=DB_PASSWORD=<password> \
+#   --from-literal=JWT_SECRET=<secret> \
+#   --from-literal=PAYMENT_WEBHOOK_SECRET=<secret>
+
+---
+# ── Backend Deployment ───────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: quickbite-backend
+  namespace: quickbite
+  labels:
+    app: quickbite-backend
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: quickbite-backend
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: quickbite-backend
+    spec:
+      containers:
+        - name: backend
+          image: ghcr.io/<your-org>/quickbite/backend:latest
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - secretRef:
+                name: quickbite-secrets
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: prod
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:postgresql://quickbite-db:5432/quickbite
+            - name: SPRING_FLYWAY_ENABLED
+              value: "true"
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            failureThreshold: 5
+
+---
+# ── Backend Service ──────────────────────────────────────────────
+apiVersion: v1
+kind: Service
+metadata:
+  name: quickbite-backend
+  namespace: quickbite
+spec:
+  selector:
+    app: quickbite-backend
+  ports:
+    - port: 8080
+      targetPort: 8080
+  type: ClusterIP
+
+---
+# ── Frontend Deployment ──────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: quickbite-frontend
+  namespace: quickbite
+  labels:
+    app: quickbite-frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: quickbite-frontend
+  template:
+    metadata:
+      labels:
+        app: quickbite-frontend
+    spec:
+      containers:
+        - name: frontend
+          image: ghcr.io/<your-org>/quickbite/frontend:latest
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              cpu: 100m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 128Mi
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
+
+---
+# ── Frontend Service ─────────────────────────────────────────────
+apiVersion: v1
+kind: Service
+metadata:
+  name: quickbite-frontend
+  namespace: quickbite
+spec:
+  selector:
+    app: quickbite-frontend
+  ports:
+    - port: 80
+      targetPort: 80
+  type: ClusterIP
+
+---
+# ── Ingress (nginx-ingress) ─────────────────────────────────────
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: quickbite-ingress
+  namespace: quickbite
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    # Uncomment for cert-manager TLS
+    # cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  ingressClassName: nginx
+  # Uncomment for TLS
+  # tls:
+  #   - hosts: [quickbite.example.com]
+  #     secretName: quickbite-tls
+  rules:
+    - host: quickbite.example.com
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: quickbite-backend
+                port:
+                  number: 8080
+          - path: /ws
+            pathType: Prefix
+            backend:
+              service:
+                name: quickbite-backend
+                port:
+                  number: 8080
+          - path: /actuator
+            pathType: Prefix
+            backend:
+              service:
+                name: quickbite-backend
+                port:
+                  number: 8080
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: quickbite-frontend
+                port:
+                  number: 80
+
+---
+# ── Flyway Pre-Deploy Job (optional) ────────────────────────────
+# Runs Flyway migrations before rolling out the new backend version.
+# Trigger with: kubectl apply -f k8s/deploy.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: flyway-migrate
+  namespace: quickbite
+  annotations:
+    # Helm hook: helm.sh/hook: pre-upgrade
+    argocd.argoproj.io/hook: PreSync
+spec:
+  backoffLimit: 3
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: flyway
+          image: ghcr.io/<your-org>/quickbite/backend:latest
+          command: ["sh", "-c", "java -Dspring.flyway.enabled=true -jar /app/app.jar --spring.main.web-application-type=none --spring.jpa.hibernate.ddl-auto=none"]
+          envFrom:
+            - secretRef:
+                name: quickbite-secrets
+          env:
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:postgresql://quickbite-db:5432/quickbite

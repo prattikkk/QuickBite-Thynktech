@@ -1,0 +1,117 @@
+erDiagram
+    roles ||--o{ users : "has"
+    users ||--o{ addresses : "owns"
+    users ||--o| vendors : "operates"
+    vendors ||--o{ menu_items : "offers"
+    users ||--o{ orders : "places (customer)"
+    vendors ||--o{ orders : "receives"
+    users ||--o{ orders : "delivers (driver)"
+    orders ||--|{ order_items : "contains"
+    menu_items ||--o{ order_items : "included in"
+    orders ||--o| payments : "paid by"
+    orders ||--o{ delivery_status : "tracks"
+
+    roles {
+        int id PK
+        string name UK "CUSTOMER, VENDOR, DRIVER, ADMIN"
+    }
+
+    users {
+        uuid id PK
+        string email UK
+        string password_hash
+        string name
+        int role_id FK
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    addresses {
+        uuid id PK
+        uuid user_id FK
+        string line1
+        string line2
+        string city
+        string state
+        string postal_code
+        string country
+        decimal lat
+        decimal lng
+        boolean is_default
+    }
+
+    vendors {
+        uuid id PK
+        uuid user_id FK
+        string name
+        string description
+        string cuisine_type
+        decimal lat
+        decimal lng
+        jsonb open_hours "e.g., {mon: {open:09:00, close:21:00}}"
+        string logo_url
+        decimal rating
+        int total_orders
+        boolean is_active
+        timestamp created_at
+    }
+
+    menu_items {
+        uuid id PK
+        uuid vendor_id FK
+        string name
+        string description
+        int price_cents
+        string image_url
+        jsonb dietary_tags "e.g., [vegan, gluten-free]"
+        boolean available
+        int display_order
+        timestamp created_at
+    }
+
+    orders {
+        uuid id PK
+        uuid customer_id FK "references users"
+        uuid vendor_id FK
+        uuid driver_id FK "nullable until assigned"
+        uuid delivery_address_id FK
+        int subtotal_cents
+        int delivery_fee_cents
+        int tax_cents
+        int total_cents
+        string status "PLACED, ACCEPTED, PREPARING, READY, ENROUTE, DELIVERED, CANCELLED"
+        text cancel_reason
+        timestamp placed_at
+        timestamp accepted_at
+        timestamp delivered_at
+        timestamp created_at
+    }
+
+    order_items {
+        uuid id PK
+        uuid order_id FK
+        uuid menu_item_id FK
+        int quantity
+        int unit_price_cents "snapshot at order time"
+        string item_name "snapshot"
+    }
+
+    payments {
+        uuid id PK
+        uuid order_id FK
+        int amount_cents
+        string provider "STRIPE, PAYPAL, CASH"
+        string provider_payment_id "e.g., Stripe pi_xxx"
+        string status "PENDING, COMPLETED, FAILED, REFUNDED"
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    delivery_status {
+        uuid id PK
+        uuid order_id FK
+        string status
+        uuid changed_by FK "references users"
+        string notes
+        timestamp changed_at
+    }

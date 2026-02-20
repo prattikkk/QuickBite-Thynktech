@@ -1,0 +1,1204 @@
+﻿[INFO] Scanning for projects...
+[INFO] 
+[INFO] ------------------< com.quickbite:quickbite-backend >-------------------
+[INFO] Building QuickBite Backend 0.0.1-SNAPSHOT
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- maven-resources-plugin:3.3.1:resources (default-resources) @ quickbite-backend ---
+[INFO] Copying 2 resources from src\main\resources to target\classes
+[INFO] Copying 6 resources from src\main\resources to target\classes
+[INFO] 
+[INFO] --- maven-compiler-plugin:3.11.0:compile (default-compile) @ quickbite-backend ---
+[INFO] Nothing to compile - all classes are up to date
+[INFO] 
+[INFO] --- maven-resources-plugin:3.3.1:testResources (default-testResources) @ quickbite-backend ---
+[INFO] Copying 1 resource from src\test\resources to target\test-classes
+[INFO] 
+[INFO] --- maven-compiler-plugin:3.11.0:testCompile (default-testCompile) @ quickbite-backend ---
+[INFO] Nothing to compile - all classes are up to date
+[INFO] 
+[INFO] --- maven-surefire-plugin:3.1.2:test (default-test) @ quickbite-backend ---
+[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+[INFO] 
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running com.quickbite.auth.controller.AuthenticationIntegrationTest
+17:44:24.296 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.quickbite.auth.controller.AuthenticationIntegrationTest]: AuthenticationIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+17:44:24.623 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.quickbite.Application for test class com.quickbite.auth.controller.AuthenticationIntegrationTest
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+ :: Spring Boot ::                (v3.2.2)
+
+2026-02-19 17:44:25 - Starting AuthenticationIntegrationTest using Java 21.0.10 with PID 21456 (started by Admin in C:\Users\Admin\QuickBite\backend)
+2026-02-19 17:44:25 - Running with Spring Boot v3.2.2, Spring v6.1.3
+2026-02-19 17:44:25 - The following 1 profile is active: "localtest"
+2026-02-19 17:44:29 - Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-02-19 17:44:29 - Finished Spring Data repository scanning in 210 ms. Found 12 JPA repository interfaces.
+2026-02-19 17:44:31 - HikariPool-1 - Starting...
+2026-02-19 17:44:31 - HikariPool-1 - Added connection org.postgresql.jdbc.PgConnection@7c421952
+2026-02-19 17:44:31 - HikariPool-1 - Start completed.
+2026-02-19 17:44:32 - Flyway Community Edition 9.22.3 by Redgate
+2026-02-19 17:44:32 - See release notes here: https://rd.gt/416ObMi
+2026-02-19 17:44:32 - 
+2026-02-19 17:44:32 - Database: jdbc:postgresql://localhost:5432/quickbite (PostgreSQL 13.23)
+2026-02-19 17:44:32 - Successfully validated 6 migrations (execution time 00:00.141s)
+2026-02-19 17:44:32 - Current version of schema "public": 5
+2026-02-19 17:44:32 - Migrating schema "public" to version "6 - normalize order statuses"
+2026-02-19 17:44:32 - Successfully applied 1 migration to schema "public", now at version v6 (execution time 00:00.052s)
+2026-02-19 17:44:32 - HHH000204: Processing PersistenceUnitInfo [name: default]
+2026-02-19 17:44:33 - HHH000412: Hibernate ORM core version 6.4.1.Final
+2026-02-19 17:44:33 - HHH000026: Second-level cache disabled
+2026-02-19 17:44:34 - No LoadTimeWeaver setup: ignoring JPA class transformer
+2026-02-19 17:44:34 - HHH90000025: PostgreSQLDialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
+2026-02-19 17:44:37 - HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2026-02-19 17:44:37 - Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-02-19 17:44:38 - Hibernate is in classpath; If applicable, HQL parser will be used.
+2026-02-19 17:44:44 - spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2026-02-19 17:44:46 - Exposing 3 endpoint(s) beneath base path '/actuator'
+2026-02-19 17:44:46 - Will secure any request with [org.springframework.security.web.session.DisableEncodeUrlFilter@53a41fbe, org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter@203f929, org.springframework.security.web.context.SecurityContextHolderFilter@5b152082, org.springframework.security.web.header.HeaderWriterFilter@34b4f6c3, org.springframework.web.filter.CorsFilter@59bcab83, org.springframework.security.web.authentication.logout.LogoutFilter@1cfb035c, com.quickbite.auth.security.JwtAuthenticationFilter@2bbc6496, org.springframework.security.web.savedrequest.RequestCacheAwareFilter@4f7c5402, org.springframework.security.web.servletapi.SecurityContextHolderAwareRequestFilter@49e3bd37, org.springframework.security.web.authentication.AnonymousAuthenticationFilter@27c243a3, org.springframework.security.web.session.SessionManagementFilter@94af25, org.springframework.security.web.access.ExceptionTranslationFilter@198ad9e0, org.springframework.security.web.access.intercept.AuthorizationFilter@29296e7]
+2026-02-19 17:44:49 - Filter 'jwtAuthenticationFilter' configured for use
+2026-02-19 17:44:49 - Initializing Spring TestDispatcherServlet ''
+2026-02-19 17:44:49 - Initializing Servlet ''
+2026-02-19 17:44:49 - Completed initialization in 5 ms
+2026-02-19 17:44:49 - Starting...
+2026-02-19 17:44:49 - BrokerAvailabilityEvent[available=true, SimpleBrokerMessageHandler [org.springframework.messaging.simp.broker.DefaultSubscriptionRegistry@6fbdee75]]
+2026-02-19 17:44:49 - Started.
+2026-02-19 17:44:49 - Started AuthenticationIntegrationTest in 24.729 seconds (process running for 27.944)
+.\mvnw.cmd : Java HotSpot(TM) 64-Bit Server VM warning: Sharing is only 
+supported for boot loader classes because bootstrap classpath has been appended
+At line:1 char:104
++ ... ava\jdk-21.0.10"; .\mvnw.cmd test --no-transfer-progress 2>&1 | Out-F ...
++                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Java HotSpot(TM...s been appended 
+   :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+WARNING: A Java agent has been loaded dynamically (C:\Users\Admin\.m2\repositor
+y\net\bytebuddy\byte-buddy-agent\1.14.11\byte-buddy-agent-1.14.11.jar)
+WARNING: If a serviceability tool is in use, please run with 
+-XX:+EnableDynamicAgentLoading to hide this warning
+WARNING: If a serviceability tool is not in use, please run with 
+-Djdk.instrument.traceUsage for more information
+WARNING: Dynamic loading of agents will be disallowed by default in a future 
+release
+2026-02-19 17:44:51 - 
+    select
+        r1_0.id,
+        r1_0.created_at,
+        r1_0.description,
+        r1_0.name 
+    from
+        roles r1_0 
+    where
+        r1_0.name=?
+2026-02-19 17:44:51 - Registration request received for email: test@quickbite.test
+2026-02-19 17:44:51 - Registering new user: test@quickbite.test
+2026-02-19 17:44:51 - 
+    insert 
+    into
+        users
+        (active, created_at, email, name, password_hash, phone, role_id, updated_at, id) 
+    values
+        (?, ?, ?, ?, ?, ?, ?, ?, ?)
+2026-02-19 17:44:52 - 
+    select
+        u1_0.id 
+    from
+        users u1_0 
+    where
+        u1_0.email=? 
+    fetch
+        first ? rows only
+2026-02-19 17:44:52 - Authentication error: Email already registered: test@quickbite.test
+2026-02-19 17:44:52 - 
+    select
+        r1_0.id,
+        r1_0.created_at,
+        r1_0.description,
+        r1_0.name 
+    from
+        roles r1_0 
+    where
+        r1_0.name=?
+2026-02-19 17:44:52 - Registration request received for email: newuser@quickbite.test
+2026-02-19 17:44:52 - Registering new user: newuser@quickbite.test
+2026-02-19 17:44:52 - 
+    insert 
+    into
+        users
+        (active, created_at, email, name, password_hash, phone, role_id, updated_at, id) 
+    values
+        (?, ?, ?, ?, ?, ?, ?, ?, ?)
+2026-02-19 17:44:52 - 
+    select
+        u1_0.id 
+    from
+        users u1_0 
+    where
+        u1_0.email=? 
+    fetch
+        first ? rows only
+2026-02-19 17:44:52 - 
+    select
+        r1_0.id,
+        r1_0.created_at,
+        r1_0.description,
+        r1_0.name 
+    from
+        roles r1_0 
+    where
+        r1_0.name=?
+2026-02-19 17:44:52 - User registered successfully: newuser@quickbite.test
+2026-02-19 17:44:52 - Refresh token stored for user: newuser@quickbite.test
+2026-02-19 17:44:52 - 
+    select
+        r1_0.id,
+        r1_0.created_at,
+        r1_0.description,
+        r1_0.name 
+    from
+        roles r1_0 
+    where
+        r1_0.name=?
+2026-02-19 17:44:52 - 
+    select
+        r1_0.id,
+        r1_0.created_at,
+        r1_0.description,
+        r1_0.name 
+    from
+        roles r1_0 
+    where
+        r1_0.name=?
+2026-02-19 17:44:52 - Login request received for email: test@quickbite.test
+2026-02-19 17:44:52 - Login attempt for user: test@quickbite.test
+2026-02-19 17:44:52 - Loading user by email: test@quickbite.test
+2026-02-19 17:44:52 - 
+    insert 
+    into
+        users
+        (active, created_at, email, name, password_hash, phone, role_id, updated_at, id) 
+    values
+        (?, ?, ?, ?, ?, ?, ?, ?, ?)
+2026-02-19 17:44:52 - 
+    select
+        u1_0.id,
+        u1_0.active,
+        u1_0.created_at,
+        u1_0.email,
+        u1_0.name,
+        u1_0.password_hash,
+        u1_0.phone,
+        u1_0.role_id,
+        u1_0.updated_at 
+    from
+        users u1_0 
+    where
+        u1_0.email=?
+2026-02-19 17:44:52 - User test@quickbite.test has authority: ROLE_CUSTOMER
+2026-02-19 17:44:53 - 
+    select
+        u1_0.id,
+        u1_0.active,
+        u1_0.created_at,
+        u1_0.email,
+        u1_0.name,
+        u1_0.password_hash,
+        u1_0.phone,
+        u1_0.role_id,
+        u1_0.updated_at 
+    from
+        users u1_0 
+    where
+        u1_0.email=?
+2026-02-19 17:44:53 - User authenticated successfully: test@quickbite.test
+2026-02-19 17:44:53 - Refresh token stored for user: test@quickbite.test
+2026-02-19 17:44:53 - 
+    select
+        r1_0.id,
+        r1_0.created_at,
+        r1_0.description,
+        r1_0.name 
+    from
+        roles r1_0 
+    where
+        r1_0.name=?
+2026-02-19 17:44:53 - Login request received for email: test@quickbite.test
+2026-02-19 17:44:53 - Login attempt for user: test@quickbite.test
+2026-02-19 17:44:53 - Loading user by email: test@quickbite.test
+2026-02-19 17:44:53 - 
+    insert 
+    into
+        users
+        (active, created_at, email, name, password_hash, phone, role_id, updated_at, id) 
+    values
+        (?, ?, ?, ?, ?, ?, ?, ?, ?)
+2026-02-19 17:44:53 - 
+    select
+        u1_0.id,
+        u1_0.active,
+        u1_0.created_at,
+        u1_0.email,
+        u1_0.name,
+        u1_0.password_hash,
+        u1_0.phone,
+        u1_0.role_id,
+        u1_0.updated_at 
+    from
+        users u1_0 
+    where
+        u1_0.email=?
+2026-02-19 17:44:53 - User test@quickbite.test has authority: ROLE_CUSTOMER
+2026-02-19 17:44:53 - 
+    select
+        u1_0.id,
+        u1_0.active,
+        u1_0.created_at,
+        u1_0.email,
+        u1_0.name,
+        u1_0.password_hash,
+        u1_0.phone,
+        u1_0.role_id,
+        u1_0.updated_at 
+    from
+        users u1_0 
+    where
+        u1_0.email=?
+2026-02-19 17:44:53 - User authenticated successfully: test@quickbite.test
+2026-02-19 17:44:53 - Refresh token stored for user: test@quickbite.test
+2026-02-19 17:44:53 - Token refresh request received
+2026-02-19 17:44:53 - Refreshing access token
+2026-02-19 17:44:53 - 
+    insert 
+    into
+        token_store
+        (device_info, expires_at, ip_address, issued_at, revoked, revoked_at, token_hash, token_type, user_id, id) 
+    values
+        (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+2026-02-19 17:44:53 - 
+    select
+        ts1_0.id,
+        ts1_0.device_info,
+        ts1_0.expires_at,
+        ts1_0.ip_address,
+        ts1_0.issued_at,
+        ts1_0.revoked,
+        ts1_0.revoked_at,
+        ts1_0.token_hash,
+        ts1_0.token_type,
+        ts1_0.user_id 
+    from
+        token_store ts1_0 
+    where
+        ts1_0.token_hash=? 
+        and ts1_0.revoked=?
+2026-02-19 17:44:53 - Access token refreshed for user: test@quickbite.test
+2026-02-19 17:44:53 - 
+    select
+        r1_0.id,
+        r1_0.created_at,
+        r1_0.description,
+        r1_0.name 
+    from
+        roles r1_0 
+    where
+        r1_0.name=?
+2026-02-19 17:44:53 - Login request received for email: test@quickbite.test
+2026-02-19 17:44:53 - Login attempt for user: test@quickbite.test
+2026-02-19 17:44:53 - Loading user by email: test@quickbite.test
+2026-02-19 17:44:53 - 
+    insert 
+    into
+        users
+        (active, created_at, email, name, password_hash, phone, role_id, updated_at, id) 
+    values
+        (?, ?, ?, ?, ?, ?, ?, ?, ?)
+2026-02-19 17:44:53 - 
+    select
+        u1_0.id,
+        u1_0.active,
+        u1_0.created_at,
+        u1_0.email,
+        u1_0.name,
+        u1_0.password_hash,
+        u1_0.phone,
+        u1_0.role_id,
+        u1_0.updated_at 
+    from
+        users u1_0 
+    where
+        u1_0.email=?
+2026-02-19 17:44:53 - User test@quickbite.test has authority: ROLE_CUSTOMER
+2026-02-19 17:44:53 - Authentication failed for user: test@quickbite.test
+2026-02-19 17:44:53 - Authentication error: Invalid email or password
+2026-02-19 17:44:53 - 
+    select
+        r1_0.id,
+        r1_0.created_at,
+        r1_0.description,
+        r1_0.name 
+    from
+        roles r1_0 
+    where
+        r1_0.name=?
+2026-02-19 17:44:53 - Validation error: Validation failed for argument [0] in public org.springframework.http.ResponseEntity<com.quickbite.common.dto.ApiResponse<com.quickbite.auth.dto.AuthResponse>> com.quickbite.auth.controller.AuthenticationController.register(com.quickbite.auth.dto.RegisterRequest) with 2 errors: [Field error in object 'registerRequest' on field 'password': rejected value [weak]; codes [Size.registerRequest.password,Size.password,Size.java.lang.String,Size]; arguments [org.springframework.context.support.DefaultMessageSourceResolvable: codes [registerRequest.password,password]; arguments []; default message [password],100,8]; default message [Password must be between 8 and 100 characters]] [Field error in object 'registerRequest' on field 'password': rejected value [weak]; codes [Pattern.registerRequest.password,Pattern.password,Pattern.java.lang.String,Pattern]; arguments [org.springframework.context.support.DefaultMessageSourceResolvable: codes [registerRequest.password,password]; arguments []; default message [password],[Ljakarta.validation.constraints.Pattern$Flag;@7ac71b01,^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]+$]; default message [Password must contain at least one uppercase letter, one lowercase letter, one digit, and one special character]] 
+2026-02-19 17:44:53 - 
+    select
+        r1_0.id,
+        r1_0.created_at,
+        r1_0.description,
+        r1_0.name 
+    from
+        roles r1_0 
+    where
+        r1_0.name=?
+2026-02-19 17:44:53 - Loading user by email: test@quickbite.test
+2026-02-19 17:44:53 - 
+    insert 
+    into
+        users
+        (active, created_at, email, name, password_hash, phone, role_id, updated_at, id) 
+    values
+        (?, ?, ?, ?, ?, ?, ?, ?, ?)
+2026-02-19 17:44:53 - 
+    select
+        u1_0.id,
+        u1_0.active,
+        u1_0.created_at,
+        u1_0.email,
+        u1_0.name,
+        u1_0.password_hash,
+        u1_0.phone,
+        u1_0.role_id,
+        u1_0.updated_at 
+    from
+        users u1_0 
+    where
+        u1_0.email=?
+2026-02-19 17:44:53 - User test@quickbite.test has authority: ROLE_CUSTOMER
+2026-02-19 17:44:53 - Set authentication for user: test@quickbite.test
+2026-02-19 17:44:53 - 
+    select
+        r1_0.id,
+        r1_0.created_at,
+        r1_0.description,
+        r1_0.name 
+    from
+        roles r1_0 
+    where
+        r1_0.name=?
+2026-02-19 17:44:53 - Login request received for email: test@quickbite.test
+2026-02-19 17:44:53 - Login attempt for user: test@quickbite.test
+2026-02-19 17:44:53 - Loading user by email: test@quickbite.test
+2026-02-19 17:44:53 - 
+    insert 
+    into
+        users
+        (active, created_at, email, name, password_hash, phone, role_id, updated_at, id) 
+    values
+        (?, ?, ?, ?, ?, ?, ?, ?, ?)
+2026-02-19 17:44:53 - 
+    select
+        u1_0.id,
+        u1_0.active,
+        u1_0.created_at,
+        u1_0.email,
+        u1_0.name,
+        u1_0.password_hash,
+        u1_0.phone,
+        u1_0.role_id,
+        u1_0.updated_at 
+    from
+        users u1_0 
+    where
+        u1_0.email=?
+2026-02-19 17:44:53 - User test@quickbite.test has authority: ROLE_CUSTOMER
+2026-02-19 17:44:54 - 
+    select
+        u1_0.id,
+        u1_0.active,
+        u1_0.created_at,
+        u1_0.email,
+        u1_0.name,
+        u1_0.password_hash,
+        u1_0.phone,
+        u1_0.role_id,
+        u1_0.updated_at 
+    from
+        users u1_0 
+    where
+        u1_0.email=?
+2026-02-19 17:44:54 - User authenticated successfully: test@quickbite.test
+2026-02-19 17:44:54 - Refresh token stored for user: test@quickbite.test
+2026-02-19 17:44:54 - Logout request received
+2026-02-19 17:44:54 - Logout request received
+2026-02-19 17:44:54 - 
+    insert 
+    into
+        token_store
+        (device_info, expires_at, ip_address, issued_at, revoked, revoked_at, token_hash, token_type, user_id, id) 
+    values
+        (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+2026-02-19 17:44:54 - 
+    select
+        ts1_0.id,
+        ts1_0.device_info,
+        ts1_0.expires_at,
+        ts1_0.ip_address,
+        ts1_0.issued_at,
+        ts1_0.revoked,
+        ts1_0.revoked_at,
+        ts1_0.token_hash,
+        ts1_0.token_type,
+        ts1_0.user_id 
+    from
+        token_store ts1_0 
+    where
+        ts1_0.token_hash=?
+2026-02-19 17:44:54 - Refresh token revoked for user: test@quickbite.test
+2026-02-19 17:44:54 - Token refresh request received
+2026-02-19 17:44:54 - Refreshing access token
+2026-02-19 17:44:54 - 
+    update
+        token_store 
+    set
+        device_info=?,
+        expires_at=?,
+        ip_address=?,
+        revoked=?,
+        revoked_at=?,
+        token_hash=?,
+        token_type=?,
+        user_id=? 
+    where
+        id=?
+2026-02-19 17:44:54 - 
+    select
+        ts1_0.id,
+        ts1_0.device_info,
+        ts1_0.expires_at,
+        ts1_0.ip_address,
+        ts1_0.issued_at,
+        ts1_0.revoked,
+        ts1_0.revoked_at,
+        ts1_0.token_hash,
+        ts1_0.token_type,
+        ts1_0.user_id 
+    from
+        token_store ts1_0 
+    where
+        ts1_0.token_hash=? 
+        and ts1_0.revoked=?
+2026-02-19 17:44:54 - Invalid token: Refresh token not found or revoked
+[INFO] Tests run: 9, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 30.35 s -- in com.quickbite.auth.controller.AuthenticationIntegrationTest
+[INFO] Running com.quickbite.orders.OrderServiceTest
+2026-02-19 17:44:56 - Vendor 7957c500-05c8-4dad-a4ec-adf1a555641b rejecting order ace226ba-fbb6-4d11-accc-6633e9daaf08: Reason
+2026-02-19 17:44:56 - Vendor daa68550-6dec-4cca-9d09-0ce965d079f5 rejecting order 25b1d9c4-3524-448b-bda3-f74161201201: Out of stock
+2026-02-19 17:44:56 - Delivery status entry created: CANCELLED for order 25b1d9c4-3524-448b-bda3-f74161201201
+2026-02-19 17:44:56 - Updating order 8a44d4ed-255e-44b3-b9e4-5cdd5575f52d status to DELIVERED by user 2847315c-be21-455d-9ce0-b402902816b1
+2026-02-19 17:44:56 - Delivery status entry created: DELIVERED for order 8a44d4ed-255e-44b3-b9e4-5cdd5575f52d
+2026-02-19 17:44:56 - Order 8a44d4ed-255e-44b3-b9e4-5cdd5575f52d status updated: ENROUTE -> DELIVERED
+2026-02-19 17:44:56 - Creating order for customer: 443d94fa-be08-44d5-ab37-53c1d35c7ea7 with 1 items
+2026-02-19 17:44:56 - Updating order 9c192e44-758d-4c48-99ef-1f11bbeac675 status to DELIVERED by user d9268009-905c-4f7b-9598-e1076c577a85
+2026-02-19 17:44:56 - Creating order for customer: 86c896f4-6e19-4ee9-8daf-b21d45cdae60 with 1 items
+2026-02-19 17:44:56 - Updating order 18f0554d-65e2-49cc-91d3-efcaddf7c5e8 status to READY by user dcd3148c-597b-46ad-a627-3c6a8f717b65
+2026-02-19 17:44:56 - Driver Driver assigned to order 18f0554d-65e2-49cc-91d3-efcaddf7c5e8
+2026-02-19 17:44:56 - Delivery status entry created: READY for order 18f0554d-65e2-49cc-91d3-efcaddf7c5e8
+2026-02-19 17:44:56 - Order 18f0554d-65e2-49cc-91d3-efcaddf7c5e8 status updated: PREPARING -> READY
+2026-02-19 17:44:57 - Vendor 9981d6c9-99ed-45bc-a9cd-fd129aeb37e8 accepting order fb56517e-5dfc-4e3b-a761-9f3ef76f9369
+2026-02-19 17:44:57 - Delivery status entry created: ACCEPTED for order fb56517e-5dfc-4e3b-a761-9f3ef76f9369
+2026-02-19 17:44:57 - Creating order for customer: 22a5ce40-7b42-4663-a22b-e0e79e7d82a5 with 1 items
+2026-02-19 17:44:57 - Order created: ORD-1771523097057-D31C1714 (ID: e50887f6-d69e-45b4-8d00-9b967f997bc3)
+2026-02-19 17:44:57 - Delivery status entry created: PLACED for order e50887f6-d69e-45b4-8d00-9b967f997bc3
+2026-02-19 17:44:57 - Notification sent to vendor Test Restaurant for order ORD-1771523097057-D31C1714
+[INFO] Tests run: 11, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 2.964 s -- in com.quickbite.orders.OrderServiceTest
+[INFO] Running com.quickbite.orders.repository.OrderRepositoryIntegrationTest
+2026-02-19 17:44:57 - Could not detect default configuration classes for test class [com.quickbite.orders.repository.OrderRepositoryIntegrationTest]: OrderRepositoryIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-02-19 17:44:57 - Found @SpringBootConfiguration com.quickbite.Application for test class com.quickbite.orders.repository.OrderRepositoryIntegrationTest
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+ :: Spring Boot ::                (v3.2.2)
+
+2026-02-19 17:44:57 - Starting OrderRepositoryIntegrationTest using Java 21.0.10 with PID 21456 (started by Admin in C:\Users\Admin\QuickBite\backend)
+2026-02-19 17:44:57 - Running with Spring Boot v3.2.2, Spring v6.1.3
+2026-02-19 17:44:57 - The following 1 profile is active: "localtest"
+2026-02-19 17:45:01 - Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-02-19 17:45:01 - Finished Spring Data repository scanning in 181 ms. Found 12 JPA repository interfaces.
+2026-02-19 17:45:02 - HikariPool-2 - Starting...
+2026-02-19 17:45:02 - HikariPool-2 - Added connection org.postgresql.jdbc.PgConnection@637ae337
+2026-02-19 17:45:02 - HikariPool-2 - Start completed.
+2026-02-19 17:45:02 - Database: jdbc:postgresql://localhost:5432/quickbite (PostgreSQL 13.23)
+2026-02-19 17:45:02 - Successfully validated 6 migrations (execution time 00:00.083s)
+2026-02-19 17:45:02 - Current version of schema "public": 6
+2026-02-19 17:45:02 - Schema "public" is up to date. No migration necessary.
+2026-02-19 17:45:03 - HHH000204: Processing PersistenceUnitInfo [name: default]
+2026-02-19 17:45:03 - HHH000026: Second-level cache disabled
+2026-02-19 17:45:03 - No LoadTimeWeaver setup: ignoring JPA class transformer
+2026-02-19 17:45:03 - HHH90000025: PostgreSQLDialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
+2026-02-19 17:45:04 - HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2026-02-19 17:45:04 - Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-02-19 17:45:06 - spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2026-02-19 17:45:07 - Exposing 3 endpoint(s) beneath base path '/actuator'
+2026-02-19 17:45:07 - Will secure any request with [org.springframework.security.web.session.DisableEncodeUrlFilter@4b5951a3, org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter@4c724636, org.springframework.security.web.context.SecurityContextHolderFilter@44be43d0, org.springframework.security.web.header.HeaderWriterFilter@69140b46, org.springframework.web.filter.CorsFilter@420edebb, org.springframework.security.web.authentication.logout.LogoutFilter@46b0a9cd, com.quickbite.auth.security.JwtAuthenticationFilter@3e6367bd, org.springframework.security.web.savedrequest.RequestCacheAwareFilter@114e8064, org.springframework.security.web.servletapi.SecurityContextHolderAwareRequestFilter@6078e75b, org.springframework.security.web.authentication.AnonymousAuthenticationFilter@58aa5259, org.springframework.security.web.session.SessionManagementFilter@1f38aa91, org.springframework.security.web.access.ExceptionTranslationFilter@728685c8, org.springframework.security.web.access.intercept.AuthorizationFilter@55ba52cc]
+2026-02-19 17:45:08 - Starting...
+2026-02-19 17:45:08 - BrokerAvailabilityEvent[available=true, SimpleBrokerMessageHandler [org.springframework.messaging.simp.broker.DefaultSubscriptionRegistry@12710921]]
+2026-02-19 17:45:08 - Started.
+2026-02-19 17:45:08 - Started OrderRepositoryIntegrationTest in 11.324 seconds (process running for 46.937)
+2026-02-19 17:45:08 - 
+    select
+        o1_0.id,
+        o1_0.cancellation_reason,
+        o1_0.cancelled_at,
+        o1_0.created_at,
+        o1_0.customer_id,
+        o1_0.delivered_at,
+        o1_0.delivery_address_id,
+        o1_0.delivery_fee_cents,
+        o1_0.driver_id,
+        o1_0.order_number,
+        o1_0.payment_id,
+        o1_0.payment_method,
+        o1_0.payment_status,
+        o1_0.scheduled_time,
+        o1_0.special_instructions,
+        o1_0.status,
+        o1_0.subtotal_cents,
+        o1_0.tax_cents,
+        o1_0.total_cents,
+        o1_0.updated_at,
+        o1_0.vendor_id 
+    from
+        orders o1_0 
+    where
+        o1_0.status=? 
+    offset
+        ? rows 
+    fetch
+        first ? rows only
+2026-02-19 17:45:08 - 
+    select
+        o1_0.id,
+        o1_0.cancellation_reason,
+        o1_0.cancelled_at,
+        o1_0.created_at,
+        o1_0.customer_id,
+        o1_0.delivered_at,
+        o1_0.delivery_address_id,
+        o1_0.delivery_fee_cents,
+        o1_0.driver_id,
+        o1_0.order_number,
+        o1_0.payment_id,
+        o1_0.payment_method,
+        o1_0.payment_status,
+        o1_0.scheduled_time,
+        o1_0.special_instructions,
+        o1_0.status,
+        o1_0.subtotal_cents,
+        o1_0.tax_cents,
+        o1_0.total_cents,
+        o1_0.updated_at,
+        o1_0.vendor_id 
+    from
+        orders o1_0 
+    left join
+        vendors v1_0 
+            on v1_0.id=o1_0.vendor_id 
+    where
+        v1_0.id=? 
+    offset
+        ? rows 
+    fetch
+        first ? rows only
+2026-02-19 17:45:08 - 
+    select
+        o1_0.id,
+        o1_0.cancellation_reason,
+        o1_0.cancelled_at,
+        o1_0.created_at,
+        o1_0.customer_id,
+        o1_0.delivered_at,
+        o1_0.delivery_address_id,
+        o1_0.delivery_fee_cents,
+        o1_0.driver_id,
+        o1_0.order_number,
+        o1_0.payment_id,
+        o1_0.payment_method,
+        o1_0.payment_status,
+        o1_0.scheduled_time,
+        o1_0.special_instructions,
+        o1_0.status,
+        o1_0.subtotal_cents,
+        o1_0.tax_cents,
+        o1_0.total_cents,
+        o1_0.updated_at,
+        o1_0.vendor_id 
+    from
+        orders o1_0 
+    where
+        o1_0.driver_id is null 
+        and o1_0.status=?
+2026-02-19 17:45:08 - 
+    select
+        count(o1_0.id) 
+    from
+        orders o1_0 
+    left join
+        users c1_0 
+            on c1_0.id=o1_0.customer_id 
+    where
+        c1_0.id=?
+2026-02-19 17:45:09 - 
+    select
+        o1_0.id,
+        o1_0.cancellation_reason,
+        o1_0.cancelled_at,
+        o1_0.created_at,
+        o1_0.customer_id,
+        o1_0.delivered_at,
+        o1_0.delivery_address_id,
+        o1_0.delivery_fee_cents,
+        o1_0.driver_id,
+        o1_0.order_number,
+        o1_0.payment_id,
+        o1_0.payment_method,
+        o1_0.payment_status,
+        o1_0.scheduled_time,
+        o1_0.special_instructions,
+        o1_0.status,
+        o1_0.subtotal_cents,
+        o1_0.tax_cents,
+        o1_0.total_cents,
+        o1_0.updated_at,
+        o1_0.vendor_id 
+    from
+        orders o1_0 
+    left join
+        users c1_0 
+            on c1_0.id=o1_0.customer_id 
+    where
+        c1_0.id=? 
+    offset
+        ? rows 
+    fetch
+        first ? rows only
+2026-02-19 17:45:09 - 
+    select
+        o1_0.id,
+        o1_0.cancellation_reason,
+        o1_0.cancelled_at,
+        o1_0.created_at,
+        o1_0.customer_id,
+        o1_0.delivered_at,
+        o1_0.delivery_address_id,
+        o1_0.delivery_fee_cents,
+        o1_0.driver_id,
+        o1_0.order_number,
+        o1_0.payment_id,
+        o1_0.payment_method,
+        o1_0.payment_status,
+        o1_0.scheduled_time,
+        o1_0.special_instructions,
+        o1_0.status,
+        o1_0.subtotal_cents,
+        o1_0.tax_cents,
+        o1_0.total_cents,
+        o1_0.updated_at,
+        o1_0.vendor_id 
+    from
+        orders o1_0 
+    where
+        o1_0.id=?
+2026-02-19 17:45:09 - 
+    select
+        oi1_0.id,
+        oi1_0.created_at,
+        oi1_0.menu_item_id,
+        oi1_0.order_id,
+        oi1_0.price_cents,
+        oi1_0.quantity,
+        oi1_0.special_instructions 
+    from
+        order_items oi1_0 
+    left join
+        orders o1_0 
+            on o1_0.id=oi1_0.order_id 
+    where
+        o1_0.id=?
+2026-02-19 17:45:09 - 
+    select
+        o1_0.id,
+        o1_0.cancellation_reason,
+        o1_0.cancelled_at,
+        o1_0.created_at,
+        o1_0.customer_id,
+        o1_0.delivered_at,
+        o1_0.delivery_address_id,
+        o1_0.delivery_fee_cents,
+        o1_0.driver_id,
+        o1_0.order_number,
+        o1_0.payment_id,
+        o1_0.payment_method,
+        o1_0.payment_status,
+        o1_0.scheduled_time,
+        o1_0.special_instructions,
+        o1_0.status,
+        o1_0.subtotal_cents,
+        o1_0.tax_cents,
+        o1_0.total_cents,
+        o1_0.updated_at,
+        o1_0.vendor_id 
+    from
+        orders o1_0 
+    left join
+        vendors v1_0 
+            on v1_0.id=o1_0.vendor_id 
+    where
+        v1_0.id=? 
+        and o1_0.status=?
+[INFO] Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 11.93 s -- in com.quickbite.orders.repository.OrderRepositoryIntegrationTest
+[INFO] Running com.quickbite.users.repository.RoleRepositoryIntegrationTest
+2026-02-19 17:45:09 - Could not detect default configuration classes for test class [com.quickbite.users.repository.RoleRepositoryIntegrationTest]: RoleRepositoryIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-02-19 17:45:09 - Found @SpringBootConfiguration com.quickbite.Application for test class com.quickbite.users.repository.RoleRepositoryIntegrationTest
+2026-02-19 17:45:09 - 
+    select
+        r1_0.id 
+    from
+        roles r1_0 
+    where
+        r1_0.name=? 
+    fetch
+        first ? rows only
+2026-02-19 17:45:09 - 
+    select
+        r1_0.id 
+    from
+        roles r1_0 
+    where
+        r1_0.name=? 
+    fetch
+        first ? rows only
+2026-02-19 17:45:09 - 
+    select
+        r1_0.id 
+    from
+        roles r1_0 
+    where
+        r1_0.name=? 
+    fetch
+        first ? rows only
+2026-02-19 17:45:09 - 
+    select
+        r1_0.id 
+    from
+        roles r1_0 
+    where
+        r1_0.name=? 
+    fetch
+        first ? rows only
+2026-02-19 17:45:09 - 
+    select
+        r1_0.id 
+    from
+        roles r1_0 
+    where
+        r1_0.name=? 
+    fetch
+        first ? rows only
+2026-02-19 17:45:09 - 
+    select
+        r1_0.id,
+        r1_0.created_at,
+        r1_0.description,
+        r1_0.name 
+    from
+        roles r1_0 
+    where
+        r1_0.name=?
+2026-02-19 17:45:09 - 
+    select
+        r1_0.id,
+        r1_0.created_at,
+        r1_0.description,
+        r1_0.name 
+    from
+        roles r1_0
+2026-02-19 17:45:09 - 
+    select
+        r1_0.id,
+        r1_0.created_at,
+        r1_0.description,
+        r1_0.name 
+    from
+        roles r1_0 
+    where
+        r1_0.name=?
+2026-02-19 17:45:09 - 
+    select
+        r1_0.id,
+        r1_0.created_at,
+        r1_0.description,
+        r1_0.name 
+    from
+        roles r1_0 
+    where
+        r1_0.name=?
+2026-02-19 17:45:09 - 
+    select
+        r1_0.id,
+        r1_0.created_at,
+        r1_0.description,
+        r1_0.name 
+    from
+        roles r1_0 
+    where
+        r1_0.name=?
+2026-02-19 17:45:09 - 
+    select
+        r1_0.id,
+        r1_0.created_at,
+        r1_0.description,
+        r1_0.name 
+    from
+        roles r1_0 
+    where
+        r1_0.name=?
+[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.211 s -- in com.quickbite.users.repository.RoleRepositoryIntegrationTest
+[INFO] Running com.quickbite.users.repository.UserRepositoryIntegrationTest
+2026-02-19 17:45:09 - Could not detect default configuration classes for test class [com.quickbite.users.repository.UserRepositoryIntegrationTest]: UserRepositoryIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-02-19 17:45:09 - Found @SpringBootConfiguration com.quickbite.Application for test class com.quickbite.users.repository.UserRepositoryIntegrationTest
+2026-02-19 17:45:09 - 
+    select
+        u1_0.id 
+    from
+        users u1_0 
+    where
+        u1_0.email=? 
+    fetch
+        first ? rows only
+2026-02-19 17:45:09 - 
+    select
+        u1_0.id 
+    from
+        users u1_0 
+    where
+        u1_0.email=? 
+    fetch
+        first ? rows only
+2026-02-19 17:45:09 - 
+    select
+        r1_0.id,
+        r1_0.created_at,
+        r1_0.description,
+        r1_0.name 
+    from
+        roles r1_0 
+    where
+        r1_0.name=?
+2026-02-19 17:45:09 - 
+    insert 
+    into
+        users
+        (active, created_at, email, name, password_hash, phone, role_id, updated_at, id) 
+    values
+        (?, ?, ?, ?, ?, ?, ?, ?, ?)
+2026-02-19 17:45:09 - 
+    select
+        u1_0.id,
+        u1_0.active,
+        u1_0.created_at,
+        u1_0.email,
+        u1_0.name,
+        u1_0.password_hash,
+        u1_0.phone,
+        u1_0.role_id,
+        u1_0.updated_at 
+    from
+        users u1_0 
+    where
+        u1_0.email=?
+2026-02-19 17:45:09 - Stopping...
+2026-02-19 17:45:09 - BrokerAvailabilityEvent[available=false, SimpleBrokerMessageHandler [org.springframework.messaging.simp.broker.DefaultSubscriptionRegistry@12710921]]
+2026-02-19 17:45:09 - Stopped.
+2026-02-19 17:45:09 - Closing JPA EntityManagerFactory for persistence unit 'default'
+2026-02-19 17:45:09 - HikariPool-2 - Shutdown initiated...
+2026-02-19 17:45:09 - HikariPool-2 - Shutdown completed.
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+ :: Spring Boot ::                (v3.2.2)
+
+2026-02-19 17:45:09 - Starting UserRepositoryIntegrationTest using Java 21.0.10 with PID 21456 (started by Admin in C:\Users\Admin\QuickBite\backend)
+2026-02-19 17:45:09 - Running with Spring Boot v3.2.2, Spring v6.1.3
+2026-02-19 17:45:09 - The following 1 profile is active: "localtest"
+2026-02-19 17:45:10 - Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-02-19 17:45:10 - Finished Spring Data repository scanning in 69 ms. Found 12 JPA repository interfaces.
+2026-02-19 17:45:10 - HikariPool-3 - Starting...
+2026-02-19 17:45:10 - HikariPool-3 - Added connection org.postgresql.jdbc.PgConnection@143776b6
+2026-02-19 17:45:10 - HikariPool-3 - Start completed.
+2026-02-19 17:45:10 - Database: jdbc:postgresql://localhost:5432/quickbite (PostgreSQL 13.23)
+2026-02-19 17:45:10 - Successfully validated 6 migrations (execution time 00:00.028s)
+2026-02-19 17:45:11 - Current version of schema "public": 6
+2026-02-19 17:45:11 - Schema "public" is up to date. No migration necessary.
+2026-02-19 17:45:11 - HHH000204: Processing PersistenceUnitInfo [name: default]
+2026-02-19 17:45:11 - HHH000026: Second-level cache disabled
+2026-02-19 17:45:11 - No LoadTimeWeaver setup: ignoring JPA class transformer
+2026-02-19 17:45:11 - HHH90000025: PostgreSQLDialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
+2026-02-19 17:45:11 - HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2026-02-19 17:45:12 - Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-02-19 17:45:16 - spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2026-02-19 17:45:16 - Exposing 3 endpoint(s) beneath base path '/actuator'
+2026-02-19 17:45:16 - Will secure any request with [org.springframework.security.web.session.DisableEncodeUrlFilter@4120dd8d, org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter@6b65d329, org.springframework.security.web.context.SecurityContextHolderFilter@2a0c8a25, org.springframework.security.web.header.HeaderWriterFilter@9bb83fc, org.springframework.web.filter.CorsFilter@1f30442b, org.springframework.security.web.authentication.logout.LogoutFilter@4b2c2934, com.quickbite.auth.security.JwtAuthenticationFilter@28d8ac67, org.springframework.security.web.savedrequest.RequestCacheAwareFilter@2221e3df, org.springframework.security.web.servletapi.SecurityContextHolderAwareRequestFilter@260072a8, org.springframework.security.web.authentication.AnonymousAuthenticationFilter@1f302749, org.springframework.security.web.session.SessionManagementFilter@4a2b62f8, org.springframework.security.web.access.ExceptionTranslationFilter@61c4f556, org.springframework.security.web.access.intercept.AuthorizationFilter@2b6021e9]
+2026-02-19 17:45:17 - Starting...
+2026-02-19 17:45:17 - BrokerAvailabilityEvent[available=true, SimpleBrokerMessageHandler [org.springframework.messaging.simp.broker.DefaultSubscriptionRegistry@7fb67207]]
+2026-02-19 17:45:17 - Started.
+2026-02-19 17:45:17 - Started UserRepositoryIntegrationTest in 8.205 seconds (process running for 55.886)
+2026-02-19 17:45:17 - 
+    select
+        u1_0.id,
+        u1_0.active,
+        u1_0.created_at,
+        u1_0.email,
+        u1_0.name,
+        u1_0.password_hash,
+        u1_0.phone,
+        u1_0.role_id,
+        u1_0.updated_at 
+    from
+        users u1_0 
+    where
+        u1_0.email=? 
+        and u1_0.active=?
+2026-02-19 17:45:17 - 
+    select
+        u1_0.id,
+        u1_0.active,
+        u1_0.created_at,
+        u1_0.email,
+        u1_0.name,
+        u1_0.password_hash,
+        u1_0.phone,
+        u1_0.role_id,
+        u1_0.updated_at 
+    from
+        users u1_0 
+    join
+        roles r1_0 
+            on r1_0.id=u1_0.role_id 
+    where
+        r1_0.name=? 
+        and u1_0.active=true
+2026-02-19 17:45:17 - 
+    select
+        r1_0.id,
+        r1_0.created_at,
+        r1_0.description,
+        r1_0.name 
+    from
+        roles r1_0 
+    where
+        r1_0.id=?
+2026-02-19 17:45:17 - 
+    select
+        u1_0.id,
+        u1_0.active,
+        u1_0.created_at,
+        u1_0.email,
+        u1_0.name,
+        u1_0.password_hash,
+        u1_0.phone,
+        u1_0.role_id,
+        u1_0.updated_at 
+    from
+        users u1_0 
+    where
+        u1_0.email=?
+2026-02-19 17:45:17 - 
+    select
+        r1_0.id,
+        r1_0.created_at,
+        r1_0.description,
+        r1_0.name 
+    from
+        roles r1_0 
+    where
+        r1_0.name=?
+2026-02-19 17:45:17 - 
+    select
+        count(u1_0.id) 
+    from
+        users u1_0 
+    where
+        u1_0.role_id=? 
+        and u1_0.active=true
+[INFO] Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 8.511 s -- in com.quickbite.users.repository.UserRepositoryIntegrationTest
+[INFO] Running com.quickbite.vendors.repository.MenuItemRepositoryIntegrationTest
+2026-02-19 17:45:17 - Could not detect default configuration classes for test class [com.quickbite.vendors.repository.MenuItemRepositoryIntegrationTest]: MenuItemRepositoryIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-02-19 17:45:17 - Found @SpringBootConfiguration com.quickbite.Application for test class com.quickbite.vendors.repository.MenuItemRepositoryIntegrationTest
+2026-02-19 17:45:17 - 
+    select
+        mi1_0.id,
+        mi1_0.available,
+        mi1_0.category,
+        mi1_0.created_at,
+        mi1_0.description,
+        mi1_0.image_url,
+        mi1_0.name,
+        mi1_0.prep_time_mins,
+        mi1_0.price_cents,
+        mi1_0.updated_at,
+        mi1_0.vendor_id 
+    from
+        menu_items mi1_0 
+    left join
+        vendors v1_0 
+            on v1_0.id=mi1_0.vendor_id 
+    where
+        v1_0.id=?
+2026-02-19 17:45:17 - 
+    select
+        mi1_0.id,
+        mi1_0.available,
+        mi1_0.category,
+        mi1_0.created_at,
+        mi1_0.description,
+        mi1_0.image_url,
+        mi1_0.name,
+        mi1_0.prep_time_mins,
+        mi1_0.price_cents,
+        mi1_0.updated_at,
+        mi1_0.vendor_id 
+    from
+        menu_items mi1_0 
+    left join
+        vendors v1_0 
+            on v1_0.id=mi1_0.vendor_id 
+    where
+        v1_0.id=?
+2026-02-19 17:45:17 - 
+    select
+        count(mi1_0.id) 
+    from
+        menu_items mi1_0 
+    left join
+        vendors v1_0 
+            on v1_0.id=mi1_0.vendor_id 
+    where
+        v1_0.id=? 
+        and mi1_0.available
+2026-02-19 17:45:18 - 
+    select
+        mi1_0.id,
+        mi1_0.available,
+        mi1_0.category,
+        mi1_0.created_at,
+        mi1_0.description,
+        mi1_0.image_url,
+        mi1_0.name,
+        mi1_0.prep_time_mins,
+        mi1_0.price_cents,
+        mi1_0.updated_at,
+        mi1_0.vendor_id 
+    from
+        menu_items mi1_0 
+    where
+        mi1_0.vendor_id=? 
+        and lower(mi1_0.name) like lower(('%'||?||'%')) escape '' 
+        and mi1_0.available=true
+2026-02-19 17:45:18 - 
+    select
+        mi1_0.id,
+        mi1_0.available,
+        mi1_0.category,
+        mi1_0.created_at,
+        mi1_0.description,
+        mi1_0.image_url,
+        mi1_0.name,
+        mi1_0.prep_time_mins,
+        mi1_0.price_cents,
+        mi1_0.updated_at,
+        mi1_0.vendor_id 
+    from
+        menu_items mi1_0 
+    left join
+        vendors v1_0 
+            on v1_0.id=mi1_0.vendor_id 
+    where
+        v1_0.id=? 
+        and mi1_0.available
+2026-02-19 17:45:18 - 
+    select
+        mi1_0.id,
+        mi1_0.available,
+        mi1_0.category,
+        mi1_0.created_at,
+        mi1_0.description,
+        mi1_0.image_url,
+        mi1_0.name,
+        mi1_0.prep_time_mins,
+        mi1_0.price_cents,
+        mi1_0.updated_at,
+        mi1_0.vendor_id 
+    from
+        menu_items mi1_0 
+    left join
+        vendors v1_0 
+            on v1_0.id=mi1_0.vendor_id 
+    where
+        v1_0.id=? 
+        and mi1_0.category=?
+2026-02-19 17:45:18 - 
+    select
+        mi1_0.id,
+        mi1_0.available,
+        mi1_0.category,
+        mi1_0.created_at,
+        mi1_0.description,
+        mi1_0.image_url,
+        mi1_0.name,
+        mi1_0.prep_time_mins,
+        mi1_0.price_cents,
+        mi1_0.updated_at,
+        mi1_0.vendor_id 
+    from
+        menu_items mi1_0 
+    where
+        mi1_0.vendor_id=? 
+        and mi1_0.price_cents between ? and ? 
+        and mi1_0.available=true 
+    order by
+        mi1_0.price_cents
+2026-02-19 17:45:18 - 
+    select
+        distinct mi1_0.category 
+    from
+        menu_items mi1_0 
+    where
+        mi1_0.vendor_id=? 
+        and mi1_0.category is not null
+[INFO] Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.272 s -- in com.quickbite.vendors.repository.MenuItemRepositoryIntegrationTest
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 46, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  01:05 min
+[INFO] Finished at: 2026-02-19T23:15:18+05:30
+[INFO] ------------------------------------------------------------------------

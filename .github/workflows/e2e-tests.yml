@@ -1,0 +1,261 @@
+name: E2E Tests
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+env:
+  JAVA_VERSION: '17'
+  NODE_VERSION: '20'
+  POSTGRES_VERSION: '13'
+
+jobs:
+  e2e-tests:
+    name: Run End-to-End Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      postgres:
+        image: postgres:13
+        env:
+          POSTGRES_USER: quickbite
+          POSTGRES_PASSWORD: quickbite_test
+          POSTGRES_DB: quickbite_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:6-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Set up Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Newman CLI
+        run: npm install -g newman newman-reporter-htmlextra
+
+      - name: Seed test database
+        env:
+          PGPASSWORD: quickbite_test
+        run: |
+          echo "Seeding test database..."
+          psql -h localhost -U quickbite -d quickbite_test -f tests/seed/test_seed.sql
+          echo "✓ Database seeded"
+
+      - name: Build and Start Backend
+        env:
+          SPRING_PROFILES_ACTIVE: test
+          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/quickbite_test
+          SPRING_DATASOURCE_USERNAME: quickbite
+          SPRING_DATASOURCE_PASSWORD: quickbite_test
+          JWT_SECRET: ${{ secrets.JWT_SECRET || 'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2' }}
+          PAYMENT_WEBHOOK_SECRET: ${{ secrets.PAYMENT_WEBHOOK_SECRET || 'whsec_test_placeholder_secret_2026' }}
+          PAYMENT_PROVIDER: generic
+          CORS_ORIGINS: http://localhost:5173
+        run: |
+          cd backend
+          echo "Building backend..."
+          mvn clean package -DskipTests -q
+          echo "Starting backend..."
+          java -jar target/*.jar > ../backend.log 2>&1 &
+          echo $! > ../backend.pid
+          cd ..
+
+      - name: Wait for Backend to be Ready
+        run: |
+          echo "Waiting for backend to be healthy..."
+          max_attempts=60
+          attempt=0
+          while [ $attempt -lt $max_attempts ]; do
+            if curl -s http://localhost:8080/actuator/health | grep -q '"status":"UP"'; then
+              echo "✓ Backend is ready!"
+              break
+            fi
+            attempt=$((attempt + 1))
+            echo "Attempt $attempt/$max_attempts..."
+            sleep 2
+          done
+          
+          if [ $attempt -eq $max_attempts ]; then
+            echo "❌ Backend failed to start"
+            cat backend.log
+            exit 1
+          fi
+
+      - name: Build and Start Frontend
+        working-directory: frontend
+        run: |
+          echo "Installing frontend dependencies..."
+          npm ci
+          echo "Building frontend..."
+          npm run build
+          echo "Starting frontend dev server..."
+          npm run dev > ../frontend.log 2>&1 &
+          echo $! > ../frontend.pid
+
+      - name: Wait for Frontend to be Ready
+        run: |
+          echo "Waiting for frontend..."
+          max_attempts=30
+          attempt=0
+          while [ $attempt -lt $max_attempts ]; do
+            if curl -s http://localhost:5173 > /dev/null 2>&1; then
+              echo "✓ Frontend is ready!"
+              break
+            fi
+            attempt=$((attempt + 1))
+            echo "Attempt $attempt/$max_attempts..."
+            sleep 2
+          done
+          
+          if [ $attempt -eq $max_attempts ]; then
+            echo "❌ Frontend failed to start"
+            cat frontend.log
+            exit 1
+          fi
+
+      - name: Run Postman/Newman Tests
+        env:
+          API_BASE_URL: http://localhost:8080
+        run: |
+          echo "Running Newman E2E tests..."
+          chmod +x tests/postman/run_collection.sh
+          tests/postman/run_collection.sh || newman_exit=$?
+          echo "NEWMAN_EXIT_CODE=${newman_exit:-0}" >> $GITHUB_ENV
+          exit ${newman_exit:-0}
+        continue-on-error: true
+
+      - name: Run WebSocket Tests
+        working-directory: tests/ws
+        env:
+          API_BASE_URL: http://localhost:8080
+          WS_URL: ws://localhost:8080/ws
+        run: |
+          echo "Installing WebSocket test dependencies..."
+          npm init -y
+          npm install --save-dev jest @types/jest @stomp/stompjs ws
+          npm install --save-dev @types/node
+          
+          echo "Running WebSocket tests..."
+          npx jest order_updates.test.js --verbose || ws_exit=$?
+          echo "WS_EXIT_CODE=${ws_exit:-0}" >> $GITHUB_ENV
+          exit ${ws_exit:-0}
+        continue-on-error: true
+
+      - name: Install Cypress Dependencies
+        working-directory: frontend
+        run: |
+          echo "Installing Cypress..."
+          npm install --save-dev cypress @cypress/browserify-preprocessor
+          npx cypress install
+
+      - name: Run Cypress E2E Tests
+        working-directory: frontend
+        env:
+          CYPRESS_BASE_URL: http://localhost:5173
+          API_BASE_URL: http://localhost:8080
+          WS_URL: ws://localhost:8080/ws
+          PAYMENT_WEBHOOK_SECRET: ${{ secrets.PAYMENT_WEBHOOK_SECRET || 'whsec_test_placeholder_secret_2026' }}
+        run: |
+          echo "Running Cypress E2E tests..."
+          npx cypress run --browser chrome --headless || cypress_exit=$?
+          echo "CYPRESS_EXIT_CODE=${cypress_exit:-0}" >> $GITHUB_ENV
+          exit ${cypress_exit:-0}
+        continue-on-error: true
+
+      - name: Upload Cypress Screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cypress-screenshots
+          path: frontend/cypress/screenshots
+          if-no-files-found: ignore
+
+      - name: Upload Cypress Videos
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cypress-videos
+          path: frontend/cypress/videos
+          if-no-files-found: ignore
+
+      - name: Upload Newman Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: newman-report
+          path: reports/newman/report.html
+          if-no-files-found: ignore
+
+      - name: Upload Backend Logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-logs
+          path: backend.log
+          if-no-files-found: ignore
+
+      - name: Upload Frontend Logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-logs
+          path: frontend.log
+          if-no-files-found: ignore
+
+      - name: Check Test Results
+        run: |
+          echo "=== Test Results Summary ==="
+          echo "Newman: ${NEWMAN_EXIT_CODE:-0}"
+          echo "WebSocket: ${WS_EXIT_CODE:-0}"
+          echo "Cypress: ${CYPRESS_EXIT_CODE:-0}"
+          
+          failed=0
+          [ "${NEWMAN_EXIT_CODE:-0}" -ne 0 ] && failed=1
+          [ "${WS_EXIT_CODE:-0}" -ne 0 ] && failed=1
+          [ "${CYPRESS_EXIT_CODE:-0}" -ne 0 ] && failed=1
+          
+          if [ $failed -eq 1 ]; then
+            echo "❌ Some tests failed"
+            exit 1
+          else
+            echo "✓ All tests passed!"
+            exit 0
+          fi
+
+      - name: Cleanup
+        if: always()
+        run: |
+          echo "Cleaning up..."
+          [ -f backend.pid ] && kill $(cat backend.pid) || true
+          [ -f frontend.pid ] && kill $(cat frontend.pid) || true

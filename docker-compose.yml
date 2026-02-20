@@ -1,0 +1,88 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:13
+    container_name: quickbite-postgres
+    environment:
+      POSTGRES_DB: quickbite
+      POSTGRES_USER: dbuser
+      POSTGRES_PASSWORD: dbpass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dbuser -d quickbite"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - quickbite-network
+
+  redis:
+    image: redis:6-alpine
+    container_name: quickbite-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - quickbite-network
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: quickbite-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@quickbite.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "8081:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      - postgres
+    networks:
+      - quickbite-network
+
+  # MinIO for object storage (optional - uncomment to enable)
+  # minio:
+  #   image: minio/minio:latest
+  #   container_name: quickbite-minio
+  #   environment:
+  #     MINIO_ROOT_USER: minioadmin
+  #     MINIO_ROOT_PASSWORD: minioadmin
+  #   ports:
+  #     - "9000:9000"    # API
+  #     - "9001:9001"    # Console
+  #   volumes:
+  #     - minio_data:/data
+  #   command: server /data --console-address ":9001"
+  #   healthcheck:
+  #     test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+  #     interval: 30s
+  #     timeout: 20s
+  #     retries: 3
+  #   networks:
+  #     - quickbite-network
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  pgadmin_data:
+    driver: local
+  # minio_data:
+  #   driver: local
+
+networks:
+  quickbite-network:
+    driver: bridge
