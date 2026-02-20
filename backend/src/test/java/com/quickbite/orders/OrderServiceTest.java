@@ -12,9 +12,12 @@ import com.quickbite.orders.entity.OrderItem;
 import com.quickbite.orders.entity.OrderStatus;
 import com.quickbite.orders.exception.BusinessException;
 import com.quickbite.orders.exception.OrderNotFoundException;
+import com.quickbite.orders.exception.InvalidTransitionException;
 import com.quickbite.orders.mapper.OrderMapper;
 import com.quickbite.orders.repository.OrderRepository;
+import com.quickbite.orders.service.EventTimelineService;
 import com.quickbite.orders.service.OrderService;
+import com.quickbite.orders.service.OrderStateMachine;
 import com.quickbite.payments.service.PaymentService;
 import com.quickbite.payments.entity.Payment;
 import com.quickbite.payments.entity.PaymentMethod;
@@ -81,6 +84,12 @@ class OrderServiceTest {
 
     @Mock
     private OrderUpdatePublisher orderUpdatePublisher;
+
+    @Mock
+    private OrderStateMachine orderStateMachine;
+
+    @Mock
+    private EventTimelineService eventTimelineService;
 
     @InjectMocks
     private OrderService orderService;
@@ -361,6 +370,7 @@ class OrderServiceTest {
     void updateOrderStatus_invalidTransition_throwsException() {
         // Arrange
         UUID orderId = UUID.randomUUID();
+        UUID actorId = UUID.randomUUID();
         Order order = Order.builder()
                 .id(orderId)
                 .status(OrderStatus.PLACED)
@@ -371,11 +381,14 @@ class OrderServiceTest {
                 .build();
 
         when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
+        when(userRepository.findById(actorId)).thenReturn(Optional.empty());
+        doThrow(new InvalidTransitionException("PLACED", "DELIVERED", "Transition not in allowed set"))
+                .when(orderStateMachine).validateTransition(OrderStatus.PLACED, OrderStatus.DELIVERED, null);
 
         // Act & Assert
-        assertThatThrownBy(() -> orderService.updateOrderStatus(orderId, updateDto, UUID.randomUUID()))
-                .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("Invalid status transition");
+        assertThatThrownBy(() -> orderService.updateOrderStatus(orderId, updateDto, actorId))
+                .isInstanceOf(InvalidTransitionException.class)
+                .hasMessageContaining("PLACED");
 
         verify(orderRepository, never()).save(any());
     }
@@ -384,7 +397,9 @@ class OrderServiceTest {
     void updateOrderStatus_toReady_assignsDriver() {
         // Arrange
         UUID orderId = UUID.randomUUID();
+        UUID actorId = UUID.randomUUID();
         UUID driverId = UUID.randomUUID();
+        User actor = User.builder().id(actorId).name("Actor").role(Role.builder().name("VENDOR").build()).build();
         User driver = User.builder().id(driverId).name("Driver").build();
 
         Order order = Order.builder()
@@ -399,12 +414,13 @@ class OrderServiceTest {
 
         when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
         when(orderRepository.save(any(Order.class))).thenReturn(order);
+        when(userRepository.findById(actorId)).thenReturn(Optional.of(actor));
         when(driverAssignmentService.assignDriverToOrder(any(), any())).thenReturn(Optional.of(driverId));
         when(userRepository.findById(driverId)).thenReturn(Optional.of(driver));
         when(orderMapper.toResponseDTO(any())).thenReturn(new OrderResponseDTO());
 
         // Act
-        OrderResponseDTO result = orderService.updateOrderStatus(orderId, updateDto, UUID.randomUUID());
+        OrderResponseDTO result = orderService.updateOrderStatus(orderId, updateDto, actorId);
 
         // Assert
         assertThat(result).isNotNull();
@@ -419,6 +435,8 @@ class OrderServiceTest {
     void updateOrderStatus_toDelivered_capturesPayment() {
         // Arrange
         UUID orderId = UUID.randomUUID();
+        UUID actorId = UUID.randomUUID();
+        User actor = User.builder().id(actorId).name("Driver Actor").role(Role.builder().name("DRIVER").build()).build();
         Order order = Order.builder()
                 .id(orderId)
                 .status(OrderStatus.ENROUTE)
@@ -432,11 +450,12 @@ class OrderServiceTest {
 
         when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
         when(orderRepository.save(any(Order.class))).thenReturn(order);
+        when(userRepository.findById(actorId)).thenReturn(Optional.of(actor));
         when(paymentService.capturePayment(any())).thenReturn(payment);
         when(orderMapper.toResponseDTO(any())).thenReturn(new OrderResponseDTO());
 
         // Act
-        OrderResponseDTO result = orderService.updateOrderStatus(orderId, updateDto, UUID.randomUUID());
+        OrderResponseDTO result = orderService.updateOrderStatus(orderId, updateDto, actorId);
 
         // Assert
         assertThat(result).isNotNull();

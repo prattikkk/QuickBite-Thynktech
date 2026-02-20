@@ -42,6 +42,7 @@ public class PaymentService {
     private final WebhookEventRepository webhookEventRepository;
     private final PaymentProperties paymentProperties;
     private final ObjectMapper objectMapper;
+    private final WebhookEventProcessor webhookEventProcessor;
 
     /**
      * Create payment intent for an order.
@@ -197,11 +198,11 @@ public class PaymentService {
 
     /**
      * Handle webhook from payment provider.
-     * Verifies signature, ensures idempotency, and processes events.
+     * Verifies signature, ensures idempotency, stores for async processing.
      *
-     * @param rawBody webhook payload
+     * @param rawBody         webhook payload
      * @param signatureHeader signature header
-     * @return true if processed successfully
+     * @return true if accepted (will be processed asynchronously)
      */
     @Transactional
     public boolean handleWebhook(String rawBody, String signatureHeader) {
@@ -221,143 +222,51 @@ public class PaymentService {
 
             // 3. Check idempotency - has this event been processed before?
             if (webhookEventRepository.existsByProviderEventId(providerEventId)) {
-                log.info("Webhook event {} already processed (idempotent)", providerEventId);
+                log.info("Webhook event {} already received (idempotent)", providerEventId);
                 return true;
             }
 
-            // 4. Store webhook event
+            // 4. Store webhook event for async processing (not processed yet)
             WebhookEvent webhookEvent = WebhookEvent.builder()
                     .providerEventId(providerEventId)
                     .eventType(eventType)
                     .payload(rawBody)
                     .processed(false)
+                    .attempts(0)
+                    .maxAttempts(5)
                     .build();
             webhookEventRepository.save(webhookEvent);
 
-            // 5. Process event based on type
-            boolean processed = processWebhookEvent(root, eventType);
-
-            // 6. Mark as processed
-            webhookEvent.setProcessed(processed);
-            webhookEvent.setProcessedAt(OffsetDateTime.now());
-            if (!processed) {
-                webhookEvent.setProcessingError("Failed to process event");
+            // 5. Attempt immediate processing (best-effort synchronous first try)
+            try {
+                boolean processed = webhookEventProcessor.processWebhookEvent(root, eventType);
+                if (processed) {
+                    webhookEvent.setProcessed(true);
+                    webhookEvent.setProcessedAt(OffsetDateTime.now());
+                    webhookEvent.setAttempts(1);
+                    webhookEventRepository.save(webhookEvent);
+                    log.info("Webhook event {} processed immediately", providerEventId);
+                } else {
+                    // Will be picked up by WebhookProcessorService retry loop
+                    webhookEvent.setAttempts(1);
+                    webhookEvent.setLastError("Initial processing returned false");
+                    webhookEvent.setNextRetryAt(OffsetDateTime.now().plusSeconds(30));
+                    webhookEventRepository.save(webhookEvent);
+                }
+            } catch (Exception e) {
+                webhookEvent.setAttempts(1);
+                webhookEvent.setLastError(e.getMessage());
+                webhookEvent.setNextRetryAt(OffsetDateTime.now().plusSeconds(30));
+                webhookEventRepository.save(webhookEvent);
+                log.warn("Webhook event {} initial processing failed, will retry: {}", providerEventId, e.getMessage());
             }
-            webhookEventRepository.save(webhookEvent);
 
-            log.info("Webhook event {} processed successfully: {}", providerEventId, processed);
-            return processed;
+            return true; // Always ACK receipt to the webhook provider
 
         } catch (Exception e) {
-            log.error("Error processing webhook", e);
+            log.error("Error receiving webhook", e);
             return false;
         }
-    }
-
-    /**
-     * Process webhook event based on type.
-     */
-    private boolean processWebhookEvent(JsonNode root, String eventType) {
-        try {
-            JsonNode data = root.path("data");
-
-            switch (eventType) {
-                case "payment.captured":
-                case "payment.success":
-                case "charge.succeeded":
-                case "payment_intent.succeeded":
-                    return handlePaymentCaptured(data);
-
-                case "payment.failed":
-                case "charge.failed":
-                case "payment_intent.payment_failed":
-                    return handlePaymentFailed(data);
-
-                case "payment.refunded":
-                case "charge.refunded":
-                    return handlePaymentRefunded(data);
-
-                case "payment.authorized":
-                    return handlePaymentAuthorized(data);
-
-                default:
-                    log.info("Unknown webhook event type: {} - ignoring", eventType);
-                    return true; // Return true to acknowledge receipt
-            }
-        } catch (Exception e) {
-            log.error("Error processing webhook event type: {}", eventType, e);
-            return false;
-        }
-    }
-
-    private boolean handlePaymentCaptured(JsonNode data) {
-        final String pid = resolveProviderPaymentId(data);
-
-        return paymentRepository.findByProviderPaymentId(pid)
-                .map(payment -> {
-                    payment.setStatus(PaymentStatus.CAPTURED);
-                    payment.setPaidAt(OffsetDateTime.now());
-                    paymentRepository.save(payment);
-                    updateOrderPaymentStatus(payment.getId(), PaymentStatus.CAPTURED);
-                    return true;
-                })
-                .orElse(false);
-    }
-
-    private boolean handlePaymentFailed(JsonNode data) {
-        final String pid = resolveProviderPaymentId(data);
-        String reasonRaw = data.path("error_description").asText("");
-        if (reasonRaw.isBlank()) {
-            reasonRaw = data.path("object").path("last_payment_error").path("message").asText("Payment failed");
-        }
-        final String reason = reasonRaw;
-
-        return paymentRepository.findByProviderPaymentId(pid)
-                .map(payment -> {
-                    payment.setStatus(PaymentStatus.FAILED);
-                    payment.setFailedAt(OffsetDateTime.now());
-                    payment.setFailureReason(reason);
-                    paymentRepository.save(payment);
-                    updateOrderPaymentStatus(payment.getId(), PaymentStatus.FAILED);
-                    return true;
-                })
-                .orElse(false);
-    }
-
-    private boolean handlePaymentRefunded(JsonNode data) {
-        final String pid = resolveProviderPaymentId(data);
-
-        return paymentRepository.findByProviderPaymentId(pid)
-                .map(payment -> {
-                    payment.setStatus(PaymentStatus.REFUNDED);
-                    paymentRepository.save(payment);
-                    updateOrderPaymentStatus(payment.getId(), PaymentStatus.REFUNDED);
-                    return true;
-                })
-                .orElse(false);
-    }
-
-    private boolean handlePaymentAuthorized(JsonNode data) {
-        final String pid = resolveProviderPaymentId(data);
-
-        return paymentRepository.findByProviderPaymentId(pid)
-                .map(payment -> {
-                    payment.setStatus(PaymentStatus.AUTHORIZED);
-                    paymentRepository.save(payment);
-                    updateOrderPaymentStatus(payment.getId(), PaymentStatus.AUTHORIZED);
-                    return true;
-                })
-                .orElse(false);
-    }
-
-    /**
-     * Extract provider payment ID from webhook data (supports Razorpay, Stripe, generic).
-     */
-    private String resolveProviderPaymentId(JsonNode data) {
-        String id = data.path("payment_id").asText("");            // Razorpay
-        if (id.isBlank()) id = data.path("id").asText("");         // Generic
-        if (id.isBlank()) id = data.path("object").path("id").asText(""); // Stripe data.object.id
-        return id;
     }
 
     /**
@@ -388,22 +297,6 @@ public class PaymentService {
         if (root.has("event")) return root.path("event").asText();
         if (root.has("type")) return root.path("type").asText();
         return "unknown";
-    }
-
-    /**
-     * Update order payment status when payment status changes.
-     */
-    private void updateOrderPaymentStatus(UUID paymentId, PaymentStatus status) {
-        paymentRepository.findById(paymentId).ifPresent(payment -> {
-            // Find order by payment
-            orderRepository.findAll().stream()
-                    .filter(o -> o.getPayment() != null && o.getPayment().getId().equals(paymentId))
-                    .findFirst()
-                    .ifPresent(order -> {
-                        order.setPaymentStatus(status);
-                        orderRepository.save(order);
-                    });
-        });
     }
 
     /**
@@ -478,6 +371,19 @@ public class PaymentService {
                 .currency(payment.getCurrency())
                 .status(payment.getStatus().name())
                 .build();
+    }
+
+    /**
+     * Update order payment status when payment status changes.
+     */
+    private void updateOrderPaymentStatus(UUID paymentId, PaymentStatus status) {
+        Payment payment = paymentRepository.findById(paymentId).orElse(null);
+        if (payment != null && payment.getOrder() != null) {
+            Order order = payment.getOrder();
+            order.setPaymentStatus(status);
+            orderRepository.save(order);
+            log.info("Updated order {} payment status to {}", order.getId(), status);
+        }
     }
 
     /**

@@ -4,6 +4,7 @@ import com.quickbite.auth.exception.AuthException;
 import com.quickbite.auth.exception.InvalidTokenException;
 import com.quickbite.common.dto.ApiResponse;
 import com.quickbite.orders.exception.BusinessException;
+import com.quickbite.orders.exception.InvalidTransitionException;
 import com.quickbite.orders.exception.OrderNotFoundException;
 import io.jsonwebtoken.JwtException;
 import lombok.extern.slf4j.Slf4j;
@@ -114,6 +115,19 @@ public class GlobalExceptionHandler {
         
         ApiResponse<Void> response = ApiResponse.error("Invalid or expired token");
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+    }
+
+    /**
+     * Handle invalid order state transition exceptions.
+     */
+    @ExceptionHandler(InvalidTransitionException.class)
+    public ResponseEntity<ApiResponse<Void>> handleInvalidTransitionException(
+            InvalidTransitionException ex, WebRequest request) {
+
+        log.warn("Invalid transition: {}", ex.getMessage());
+
+        ApiResponse<Void> response = ApiResponse.error(ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 
     /**

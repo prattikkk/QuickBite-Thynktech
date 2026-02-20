@@ -43,6 +43,20 @@ public class WebhookEvent {
     @Column(name = "processing_error", columnDefinition = "text")
     private String processingError;
 
+    @Column(nullable = false)
+    @Builder.Default
+    private Integer attempts = 0;
+
+    @Column(name = "max_attempts", nullable = false)
+    @Builder.Default
+    private Integer maxAttempts = 5;
+
+    @Column(name = "last_error", columnDefinition = "text")
+    private String lastError;
+
+    @Column(name = "next_retry_at", columnDefinition = "timestamptz")
+    private OffsetDateTime nextRetryAt;
+
     @CreationTimestamp
     @Column(name = "created_at", columnDefinition = "timestamptz", updatable = false)
     private OffsetDateTime createdAt;

@@ -13,6 +13,8 @@ import com.quickbite.users.entity.Role;
 import com.quickbite.users.entity.User;
 import com.quickbite.users.repository.RoleRepository;
 import com.quickbite.users.repository.UserRepository;
+import com.quickbite.vendors.entity.Vendor;
+import com.quickbite.vendors.repository.VendorRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -44,6 +46,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
     private final AuthenticationManager authenticationManager;
+    private final VendorRepository vendorRepository;
 
     /**
      * Register a new user.
@@ -78,6 +81,18 @@ public class AuthService {
 
         User savedUser = userRepository.save(user);
         log.info("User registered successfully: {}", savedUser.getEmail());
+
+        // Auto-create a Vendor entity for VENDOR users so they can manage their restaurant
+        if ("VENDOR".equalsIgnoreCase(roleName)) {
+            Vendor vendor = Vendor.builder()
+                    .user(savedUser)
+                    .name(savedUser.getName() + "'s Restaurant")
+                    .description("Welcome to my restaurant!")
+                    .active(true)
+                    .build();
+            vendorRepository.save(vendor);
+            log.info("Auto-created vendor profile for user: {}", savedUser.getEmail());
+        }
 
         // Generate tokens
         return generateAuthResponse(savedUser);

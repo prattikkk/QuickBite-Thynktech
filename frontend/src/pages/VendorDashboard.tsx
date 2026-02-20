@@ -1,37 +1,62 @@
 /**
- * VendorDashboard page
+ * VendorDashboard — tabbed layout: Orders | Menu | Profile
  */
 
 import { useState, useEffect } from 'react';
 import { vendorService } from '../services';
-import { OrderDTO } from '../types';
+import { OrderDTO, VendorDTO } from '../types';
 import { LoadingSpinner } from '../components';
 import { formatCurrencyCompact, formatDateTime } from '../utils';
 import { useToastStore } from '../store';
+import VendorMenuManagement from './VendorMenuManagement';
+import VendorProfile from './VendorProfile';
+
+type Tab = 'orders' | 'menu' | 'profile';
 
 export default function VendorDashboard() {
+  const [tab, setTab] = useState<Tab>('orders');
+  const [vendor, setVendor] = useState<VendorDTO | null>(null);
+  const [vendorLoading, setVendorLoading] = useState(true);
   const [orders, setOrders] = useState<OrderDTO[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [ordersLoading, setOrdersLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const { success, error: showError } = useToastStore();
 
+  // Load vendor profile
+  useEffect(() => {
+    loadVendorProfile();
+  }, []);
+
+  // Load orders + auto-refresh
   useEffect(() => {
     loadOrders();
-    // Auto-refresh every 10s for new orders
     const interval = setInterval(loadOrders, 10000);
     return () => clearInterval(interval);
   }, []);
 
+  const loadVendorProfile = async () => {
+    try {
+      const data = await vendorService.getMyVendorProfile();
+      setVendor(data);
+      // If no restaurant profile yet, show profile tab right away
+      if (!data) setTab('profile');
+    } catch (err: any) {
+      showError(err.message || 'Failed to load vendor profile');
+    } finally {
+      setVendorLoading(false);
+    }
+  };
+
   const loadOrders = async () => {
     try {
       const data = await vendorService.getVendorOrders({ page: 0, size: 50 });
-      // Backend returns Page<OrderDTO>, extract content
       const orderList = (data as any)?.content || data || [];
       setOrders(Array.isArray(orderList) ? orderList : []);
     } catch (err: any) {
-      showError(err.message || 'Failed to load orders');
+      // silently fail on auto-refresh
+      if (ordersLoading) showError(err.message || 'Failed to load orders');
     } finally {
-      setLoading(false);
+      setOrdersLoading(false);
     }
   };
 
@@ -50,7 +75,6 @@ export default function VendorDashboard() {
 
   const handleReject = async (orderId: string) => {
     if (!confirm('Are you sure you want to reject this order?')) return;
-
     try {
       setActionLoading(orderId);
       await vendorService.rejectOrder(orderId, 'Rejected by vendor');
@@ -89,7 +113,7 @@ export default function VendorDashboard() {
     }
   };
 
-  if (loading) {
+  if (vendorLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <LoadingSpinner size="lg" />
@@ -97,92 +121,243 @@ export default function VendorDashboard() {
     );
   }
 
+  const tabs: { key: Tab; label: string; icon: string }[] = [
+    { key: 'orders', label: 'Orders', icon: '📋' },
+    { key: 'menu', label: 'Menu', icon: '🍽️' },
+    { key: 'profile', label: 'Profile', icon: '⚙️' },
+  ];
+
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">Vendor Dashboard</h1>
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* Header */}
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold text-gray-900">
+            {vendor ? vendor.name : 'Vendor Dashboard'}
+          </h1>
+          {vendor && (
+            <p className="text-sm text-gray-500 mt-1">
+              {vendor.active ? '🟢 Active' : '🔴 Inactive'} · {vendor.menuItemCount} menu items
+            </p>
+          )}
+        </div>
 
-        {orders.length === 0 ? (
-          <div className="bg-white rounded-lg shadow-md p-12 text-center">
-            <p className="text-gray-600">No orders yet</p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {orders.map((order) => (
-              <div key={order.id} className="bg-white rounded-lg shadow-md p-6">
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <h3 className="text-lg font-bold">Order #{order.orderNumber || order.id.substring(0, 8)}</h3>
-                    <p className="text-sm text-gray-600">{formatDateTime(order.createdAt)}</p>
-                    <p className="text-sm text-gray-900 mt-1">{order.customerName}</p>
-                  </div>
-                  <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
-                    {order.status}
+        {/* Tab navigation */}
+        <div className="border-b border-gray-200 mb-6">
+          <nav className="flex gap-6">
+            {tabs.map((t) => (
+              <button
+                key={t.key}
+                onClick={() => setTab(t.key)}
+                className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${
+                  tab === t.key
+                    ? 'border-primary-600 text-primary-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <span className="mr-1.5">{t.icon}</span>
+                {t.label}
+                {t.key === 'orders' && orders.filter((o) => o.status === 'PLACED').length > 0 && (
+                  <span className="ml-2 px-2 py-0.5 bg-red-500 text-white text-xs rounded-full">
+                    {orders.filter((o) => o.status === 'PLACED').length}
                   </span>
-                </div>
-
-                <div className="mb-4">
-                  <h4 className="font-medium mb-2">Items:</h4>
-                  <ul className="text-sm space-y-1">
-                    {order.items.map((item) => (
-                      <li key={item.id} className="text-gray-700">
-                        {item.quantity}x {item.name}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
-                <div className="flex justify-between items-center pt-4 border-t">
-                  <p className="text-lg font-bold text-primary-600">
-                    {formatCurrencyCompact(order.totalCents)}
-                  </p>
-
-                  <div className="flex gap-2">
-                    {order.status === 'PLACED' && (
-                      <>
-                        <button
-                          onClick={() => handleAccept(order.id)}
-                          disabled={actionLoading === order.id}
-                          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
-                        >
-                          Accept
-                        </button>
-                        <button
-                          onClick={() => handleReject(order.id)}
-                          disabled={actionLoading === order.id}
-                          className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
-                        >
-                          Reject
-                        </button>
-                      </>
-                    )}
-
-                    {order.status === 'ACCEPTED' && (
-                      <button
-                        onClick={() => handleMarkPreparing(order.id)}
-                        disabled={actionLoading === order.id}
-                        className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
-                      >
-                        Start Preparing
-                      </button>
-                    )}
-
-                    {order.status === 'PREPARING' && (
-                      <button
-                        onClick={() => handleMarkReady(order.id)}
-                        disabled={actionLoading === order.id}
-                        className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
-                      >
-                        Mark Ready
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
+                )}
+              </button>
             ))}
+          </nav>
+        </div>
+
+        {/* Tab content */}
+        {tab === 'orders' && (
+          <OrdersTab
+            orders={orders}
+            loading={ordersLoading}
+            actionLoading={actionLoading}
+            vendor={vendor}
+            onAccept={handleAccept}
+            onReject={handleReject}
+            onMarkPreparing={handleMarkPreparing}
+            onMarkReady={handleMarkReady}
+          />
+        )}
+
+        {tab === 'menu' && vendor && <VendorMenuManagement vendor={vendor} />}
+
+        {tab === 'menu' && !vendor && (
+          <div className="bg-white rounded-lg shadow-md p-12 text-center">
+            <p className="text-gray-600 mb-4">Create your restaurant profile first before adding menu items.</p>
+            <button
+              onClick={() => setTab('profile')}
+              className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+            >
+              Go to Profile
+            </button>
           </div>
         )}
+
+        {tab === 'profile' && (
+          <VendorProfile
+            vendor={vendor}
+            onProfileUpdated={(updated) => {
+              setVendor(updated);
+              success('Profile saved!');
+              // If they just created their restaurant, switch to menu tab
+              if (!vendor) setTab('menu');
+            }}
+          />
+        )}
       </div>
+    </div>
+  );
+}
+
+// ── Orders sub-component ───────────────────────────────────────────────
+
+interface OrdersTabProps {
+  orders: OrderDTO[];
+  loading: boolean;
+  actionLoading: string | null;
+  vendor: VendorDTO | null;
+  onAccept: (id: string) => void;
+  onReject: (id: string) => void;
+  onMarkPreparing: (id: string) => void;
+  onMarkReady: (id: string) => void;
+}
+
+function OrdersTab({
+  orders,
+  loading,
+  actionLoading,
+  vendor,
+  onAccept,
+  onReject,
+  onMarkPreparing,
+  onMarkReady,
+}: OrdersTabProps) {
+  if (!vendor) {
+    return (
+      <div className="bg-white rounded-lg shadow-md p-12 text-center">
+        <p className="text-gray-600">Create your restaurant profile first to start receiving orders.</p>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-12">
+        <LoadingSpinner size="lg" />
+      </div>
+    );
+  }
+
+  if (orders.length === 0) {
+    return (
+      <div className="bg-white rounded-lg shadow-md p-12 text-center">
+        <div className="text-5xl mb-4">📭</div>
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">No orders yet</h3>
+        <p className="text-gray-500">
+          Orders from customers will appear here. Make sure you have menu items available!
+        </p>
+      </div>
+    );
+  }
+
+  // Group by status for better UX
+  const statusOrder = ['PLACED', 'ACCEPTED', 'PREPARING', 'READY', 'ASSIGNED', 'PICKED_UP', 'ENROUTE', 'DELIVERED', 'CANCELLED', 'REJECTED'];
+  const sorted = [...orders].sort(
+    (a, b) => statusOrder.indexOf(a.status) - statusOrder.indexOf(b.status)
+  );
+
+  return (
+    <div className="space-y-4">
+      {sorted.map((order) => (
+        <div key={order.id} className="bg-white rounded-lg shadow-md p-6">
+          <div className="flex justify-between items-start mb-4">
+            <div>
+              <h3 className="text-lg font-bold">
+                Order #{order.orderNumber || order.id.substring(0, 8)}
+              </h3>
+              <p className="text-sm text-gray-600">{formatDateTime(order.createdAt)}</p>
+              <p className="text-sm text-gray-900 mt-1">{order.customerName}</p>
+            </div>
+            <span
+              className={`px-3 py-1 rounded-full text-sm font-medium ${
+                order.status === 'PLACED'
+                  ? 'bg-yellow-100 text-yellow-800'
+                  : order.status === 'ACCEPTED'
+                  ? 'bg-blue-100 text-blue-800'
+                  : order.status === 'PREPARING'
+                  ? 'bg-purple-100 text-purple-800'
+                  : order.status === 'READY'
+                  ? 'bg-green-100 text-green-800'
+                  : order.status === 'CANCELLED' || order.status === 'REJECTED'
+                  ? 'bg-red-100 text-red-800'
+                  : 'bg-gray-100 text-gray-800'
+              }`}
+            >
+              {order.status}
+            </span>
+          </div>
+
+          <div className="mb-4">
+            <h4 className="font-medium mb-2">Items:</h4>
+            <ul className="text-sm space-y-1">
+              {order.items.map((item) => (
+                <li key={item.id} className="text-gray-700">
+                  {item.quantity}x {item.name}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="flex justify-between items-center pt-4 border-t">
+            <p className="text-lg font-bold text-primary-600">
+              {formatCurrencyCompact(order.totalCents)}
+            </p>
+
+            <div className="flex gap-2">
+              {order.status === 'PLACED' && (
+                <>
+                  <button
+                    onClick={() => onAccept(order.id)}
+                    disabled={actionLoading === order.id}
+                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+                  >
+                    Accept
+                  </button>
+                  <button
+                    onClick={() => onReject(order.id)}
+                    disabled={actionLoading === order.id}
+                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+                  >
+                    Reject
+                  </button>
+                </>
+              )}
+
+              {order.status === 'ACCEPTED' && (
+                <button
+                  onClick={() => onMarkPreparing(order.id)}
+                  disabled={actionLoading === order.id}
+                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
+                >
+                  Start Preparing
+                </button>
+              )}
+
+              {order.status === 'PREPARING' && (
+                <button
+                  onClick={() => onMarkReady(order.id)}
+                  disabled={actionLoading === order.id}
+                  className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
+                >
+                  Mark Ready
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

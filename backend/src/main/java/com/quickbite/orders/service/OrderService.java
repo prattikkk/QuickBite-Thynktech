@@ -54,6 +54,8 @@ public class OrderService {
     private final DriverAssignmentService driverAssignmentService;
     private final OrderMapper orderMapper;
     private final OrderUpdatePublisher orderUpdatePublisher;
+    private final OrderStateMachine orderStateMachine;
+    private final EventTimelineService eventTimelineService;
 
     // Tax and delivery fee configuration (could move to properties)
     private static final double TAX_RATE = 0.05; // 5% tax
@@ -171,6 +173,11 @@ public class OrderService {
 
         // 8. Create initial delivery status entry
         createDeliveryStatusEntry(order, OrderStatus.PLACED, customer.getId(), "Order placed");
+
+        // 8b. Record timeline entry
+        eventTimelineService.recordStatusChange(order.getId(), customer.getId(),
+                null, OrderStatus.PLACED,
+                Map.of("orderNumber", order.getOrderNumber(), "totalCents", totalCents));
 
         // 9. Send vendor notification (stub)
         notifyVendor(order);
@@ -301,6 +308,11 @@ public class OrderService {
         // Create audit entry
         createDeliveryStatusEntry(order, newStatus, actorId, dto.getNote());
 
+        // Record timeline
+        Map<String, Object> meta = new HashMap<>();
+        if (dto.getNote() != null) meta.put("note", dto.getNote());
+        eventTimelineService.recordStatusChange(order.getId(), actorId, oldStatus, newStatus, meta);
+
         log.info("Order {} status updated: {} -> {}", orderId, oldStatus, newStatus);
 
         // Publish real-time update
@@ -331,6 +343,10 @@ public class OrderService {
         order = orderRepository.save(order);
 
         createDeliveryStatusEntry(order, OrderStatus.ACCEPTED, vendorId, "Order accepted by vendor");
+
+        // Record timeline
+        eventTimelineService.recordStatusChange(order.getId(), vendorId,
+                OrderStatus.PLACED, OrderStatus.ACCEPTED, Map.of("action", "accept"));
 
         // Publish real-time update
         orderUpdatePublisher.publishOrderUpdate(order);
@@ -368,6 +384,10 @@ public class OrderService {
 
         createDeliveryStatusEntry(order, OrderStatus.CANCELLED, vendorId, "Order rejected by vendor: " + reason);
 
+        // Record timeline
+        eventTimelineService.recordStatusChange(order.getId(), vendorId,
+                OrderStatus.PLACED, OrderStatus.CANCELLED, Map.of("action", "reject", "reason", reason));
+
         // Publish real-time update
         orderUpdatePublisher.publishOrderUpdate(order);
 
@@ -379,27 +399,13 @@ public class OrderService {
     private void validateStatusTransition(Order order, OrderStatus newStatus, UUID actorId) {
         OrderStatus currentStatus = order.getStatus();
 
-        // Define allowed transitions
-        Map<OrderStatus, Set<OrderStatus>> allowedTransitions = Map.of(
-                OrderStatus.PLACED, Set.of(OrderStatus.ACCEPTED, OrderStatus.CANCELLED),
-                OrderStatus.ACCEPTED, Set.of(OrderStatus.PREPARING, OrderStatus.CANCELLED),
-                OrderStatus.PREPARING, Set.of(OrderStatus.READY, OrderStatus.CANCELLED),
-                OrderStatus.READY, Set.of(OrderStatus.ASSIGNED, OrderStatus.PICKED_UP, OrderStatus.CANCELLED),
-                OrderStatus.ASSIGNED, Set.of(OrderStatus.PICKED_UP, OrderStatus.CANCELLED),
-                OrderStatus.PICKED_UP, Set.of(OrderStatus.ENROUTE, OrderStatus.CANCELLED),
-                OrderStatus.ENROUTE, Set.of(OrderStatus.DELIVERED, OrderStatus.CANCELLED)
-        );
+        // Resolve actor role
+        String actorRole = userRepository.findById(actorId)
+                .map(u -> u.getRole().getName())
+                .orElse(null);
 
-        Set<OrderStatus> validNextStatuses = allowedTransitions.getOrDefault(currentStatus, Collections.emptySet());
-
-        if (!validNextStatuses.contains(newStatus)) {
-            throw new BusinessException(
-                    String.format("Invalid status transition: %s -> %s", currentStatus, newStatus)
-            );
-        }
-
-        // Role-based checks would go here (e.g., only driver can mark PICKED_UP)
-        // This requires checking actorId's role, which we'll skip for simplicity
+        // Delegate to central state machine (throws InvalidTransitionException on failure)
+        orderStateMachine.validateTransition(currentStatus, newStatus, actorRole);
     }
 
     private void assignDriverToOrder(Order order) {
@@ -482,9 +488,13 @@ public class OrderService {
 
         order.setDriver(driver);
         if (order.getStatus() != OrderStatus.ASSIGNED) {
+            OrderStatus oldStatus = order.getStatus();
             order.setStatus(OrderStatus.ASSIGNED);
             order = orderRepository.save(order);
             createDeliveryStatusEntry(order, OrderStatus.ASSIGNED, actorId, "Driver manually assigned");
+            eventTimelineService.recordStatusChange(order.getId(), actorId,
+                    oldStatus, OrderStatus.ASSIGNED,
+                    Map.of("driverId", driverId.toString(), "driverName", driver.getName()));
         } else {
             order = orderRepository.save(order);
         }

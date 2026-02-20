@@ -1,27 +1,25 @@
 /**
- * Vendor service
+ * Vendor service — browsing, profile management, menu CRUD, order management
  */
 
 import api from './api';
 import {
   VendorDTO,
   VendorListResponse,
+  VendorCreateRequest,
+  VendorUpdateRequest,
   MenuItemDTO,
+  MenuItemCreateRequest,
   PageRequest,
 } from '../types';
 
 export const vendorService = {
-  /**
-   * Get list of vendors with pagination
-   */
+  // ── Browse (all users) ─────────────────────────────────────────────
+
   getVendors: async (params?: PageRequest): Promise<VendorListResponse> => {
-    const response = await api.get<any, VendorListResponse>('/vendors', { params });
-    return response;
+    return api.get<any, VendorListResponse>('/vendors', { params });
   },
 
-  /**
-   * Get all vendors (fetches first 100 active vendors)
-   */
   getAllVendors: async (): Promise<VendorDTO[]> => {
     const response = await api.get<any, VendorDTO[]>('/vendors', {
       params: { page: 0, size: 100 },
@@ -29,79 +27,76 @@ export const vendorService = {
     return Array.isArray(response) ? response : [];
   },
 
-  /**
-   * Get vendor by ID
-   */
   getVendorById: async (id: string): Promise<VendorDTO> => {
-    const response = await api.get<any, VendorDTO>(`/vendors/${id}`);
-    return response;
+    return api.get<any, VendorDTO>(`/vendors/${id}`);
   },
 
-  /**
-   * Get menu items for a vendor
-   */
   getVendorMenu: async (vendorId: string, params?: PageRequest): Promise<MenuItemDTO[]> => {
-    const response = await api.get<any, MenuItemDTO[]>(`/vendors/${vendorId}/menu`, {
-      params,
-    });
+    const response = await api.get<any, MenuItemDTO[]>(`/vendors/${vendorId}/menu`, { params });
     return Array.isArray(response) ? response : [];
   },
 
-  /**
-   * Search vendors by name or cuisine
-   */
   searchVendors: async (query: string, params?: PageRequest): Promise<VendorListResponse> => {
-    const response = await api.get<any, VendorListResponse>('/vendors/search', {
+    return api.get<any, VendorListResponse>('/vendors/search', {
       params: { ...params, query },
     });
-    return response;
   },
 
-  /**
-   * Get orders for vendor (vendor dashboard)
-   * Uses the generic /orders endpoint with vendorId filter
-   */
+  // ── Vendor profile management ──────────────────────────────────────
+
+  /** Get the logged-in vendor's own restaurant profile (null if none yet) */
+  getMyVendorProfile: async (): Promise<VendorDTO | null> => {
+    const response = await api.get<any, VendorDTO | null>('/vendors/my');
+    return response ?? null;
+  },
+
+  /** Create a new restaurant for the logged-in vendor */
+  createVendorProfile: async (data: VendorCreateRequest): Promise<VendorDTO> => {
+    return api.post<any, VendorDTO>('/vendors', data);
+  },
+
+  /** Update the logged-in vendor's own restaurant */
+  updateVendorProfile: async (data: VendorUpdateRequest): Promise<VendorDTO> => {
+    return api.put<any, VendorDTO>('/vendors/my', data);
+  },
+
+  // ── Menu item CRUD (for vendor owners) ─────────────────────────────
+
+  /** Add a new menu item to the vendor's restaurant */
+  createMenuItem: async (vendorId: string, data: MenuItemCreateRequest): Promise<MenuItemDTO> => {
+    return api.post<any, MenuItemDTO>(`/vendors/${vendorId}/menu`, data);
+  },
+
+  /** Update an existing menu item */
+  updateMenuItem: async (itemId: string, data: MenuItemCreateRequest): Promise<MenuItemDTO> => {
+    return api.put<any, MenuItemDTO>(`/menu-items/${itemId}`, data);
+  },
+
+  /** Delete a menu item */
+  deleteMenuItem: async (itemId: string): Promise<void> => {
+    await api.delete(`/menu-items/${itemId}`);
+  },
+
+  // ── Order management (vendor dashboard) ────────────────────────────
+
   getVendorOrders: async (params?: PageRequest & { vendorId?: string }) => {
-    const response = await api.get('/orders', { params });
-    return response;
+    return api.get('/orders', { params });
   },
 
-  /**
-   * Accept an order (vendor action)
-   */
-  acceptOrder: async (orderId: number | string): Promise<any> => {
-    const response = await api.post(`/orders/${orderId}/accept`);
-    return response;
+  acceptOrder: async (orderId: string): Promise<any> => {
+    return api.post(`/orders/${orderId}/accept`);
   },
 
-  /**
-   * Reject an order (vendor action)
-   */
-  rejectOrder: async (orderId: number | string, reason?: string): Promise<any> => {
-    const response = await api.post(`/orders/${orderId}/reject`, null, {
-      params: { reason },
-    });
-    return response;
+  rejectOrder: async (orderId: string, reason?: string): Promise<any> => {
+    return api.post(`/orders/${orderId}/reject`, null, { params: { reason } });
   },
 
-  /**
-   * Mark order as preparing
-   */
-  markOrderPreparing: async (orderId: number | string): Promise<any> => {
-    const response = await api.patch(`/orders/${orderId}/status`, {
-      status: 'PREPARING',
-    });
-    return response;
+  markOrderPreparing: async (orderId: string): Promise<any> => {
+    return api.patch(`/orders/${orderId}/status`, { status: 'PREPARING' });
   },
 
-  /**
-   * Mark order as ready for pickup
-   */
-  markOrderReady: async (orderId: number | string): Promise<any> => {
-    const response = await api.patch(`/orders/${orderId}/status`, {
-      status: 'READY',
-    });
-    return response;
+  markOrderReady: async (orderId: string): Promise<any> => {
+    return api.patch(`/orders/${orderId}/status`, { status: 'READY' });
   },
 };
 

@@ -87,6 +87,9 @@ public class MenuItemController {
         Vendor vendor = vendorRepository.findById(vendorId)
                 .orElseThrow(() -> new RuntimeException("Vendor not found: " + vendorId));
 
+        // Ownership check: VENDOR users can only add items to their own restaurant
+        validateOwnership(vendor, authentication);
+
         MenuItem item = MenuItem.builder()
                 .vendor(vendor)
                 .name(dto.getName())
@@ -112,12 +115,16 @@ public class MenuItemController {
     @Operation(summary = "Update menu item", description = "Update an existing menu item")
     public ResponseEntity<ApiResponse<MenuItemResponseDTO>> updateMenuItem(
             @PathVariable UUID id,
-            @Valid @RequestBody MenuItemCreateDTO dto
+            @Valid @RequestBody MenuItemCreateDTO dto,
+            Authentication authentication
     ) {
         log.info("Updating menu item: {}", id);
 
         MenuItem item = menuItemRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Menu item not found: " + id));
+
+        // Ownership check
+        validateOwnership(item.getVendor(), authentication);
 
         if (dto.getName() != null) item.setName(dto.getName());
         if (dto.getDescription() != null) item.setDescription(dto.getDescription());
@@ -138,15 +145,32 @@ public class MenuItemController {
     @DeleteMapping("/api/menu-items/{id}")
     @PreAuthorize("hasAnyRole('VENDOR', 'ADMIN')")
     @Operation(summary = "Delete menu item", description = "Remove a menu item from the menu")
-    public ResponseEntity<ApiResponse<Void>> deleteMenuItem(@PathVariable UUID id) {
+    public ResponseEntity<ApiResponse<Void>> deleteMenuItem(
+            @PathVariable UUID id,
+            Authentication authentication
+    ) {
         log.info("Deleting menu item: {}", id);
 
-        if (!menuItemRepository.existsById(id)) {
-            throw new RuntimeException("Menu item not found: " + id);
-        }
+        MenuItem item = menuItemRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Menu item not found: " + id));
+
+        // Ownership check
+        validateOwnership(item.getVendor(), authentication);
 
         menuItemRepository.deleteById(id);
         return ResponseEntity.ok(ApiResponse.success("Menu item deleted successfully", null));
+    }
+
+    /**
+     * Verify the authenticated user owns this vendor (skip for ADMIN).
+     */
+    private void validateOwnership(Vendor vendor, Authentication authentication) {
+        UUID userId = UUID.fromString(authentication.getName());
+        boolean isAdmin = authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+        if (!isAdmin && (vendor.getUser() == null || !vendor.getUser().getId().equals(userId))) {
+            throw new RuntimeException("You do not own this restaurant");
+        }
     }
 
     private MenuItemResponseDTO toDTO(MenuItem item) {
