@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { vendorService } from '../services/vendor.service';
 import { VendorDTO } from '../types/vendor.types';
 import { LoadingSpinner } from '../components/LoadingSpinner';
+import { FavoriteButton } from '../components';
 import { useToastStore } from '../store/toastStore';
 
 export default function VendorList() {
@@ -152,11 +153,14 @@ export default function VendorList() {
                     </svg>
                   </div>
                   {/* Active Badge */}
-                  {vendor.active && (
-                    <div className="absolute top-3 right-3 bg-green-500 text-white text-xs font-semibold px-2 py-1 rounded-full">
-                      Open
-                    </div>
-                  )}
+                  <div className="absolute top-3 right-3 flex items-center gap-2">
+                    {vendor.active && (
+                      <span className="bg-green-500 text-white text-xs font-semibold px-2 py-1 rounded-full">
+                        Open
+                      </span>
+                    )}
+                    <FavoriteButton vendorId={vendor.id} className="bg-white/80 backdrop-blur-sm shadow-sm" />
+                  </div>
                 </div>
 
                 {/* Vendor Info */}

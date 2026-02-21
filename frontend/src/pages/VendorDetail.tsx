@@ -7,7 +7,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { vendorService } from '../services';
 import { useCartStore, useToastStore } from '../store';
 import { VendorDTO, MenuItemDTO } from '../types';
-import { LoadingSpinner, MenuItemCard } from '../components';
+import { LoadingSpinner, MenuItemCard, FavoriteButton } from '../components';
 
 export default function VendorDetail() {
   const { id } = useParams<{ id: string }>();
@@ -100,7 +100,10 @@ export default function VendorDetail() {
 
           <div className="flex flex-col md:flex-row gap-6">
             <div className="flex-1">
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">{vendor.name}</h1>
+              <div className="flex items-start justify-between">
+                <h1 className="text-3xl font-bold text-gray-900 mb-2">{vendor.name}</h1>
+                <FavoriteButton vendorId={vendor.id} className="ml-4" />
+              </div>
               <p className="text-gray-600 mb-4">{vendor.description}</p>
 
               <div className="flex flex-wrap gap-4 text-sm text-gray-600">

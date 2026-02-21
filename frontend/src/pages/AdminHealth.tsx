@@ -5,6 +5,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { adminService, HealthSummary } from '../services/admin.service';
 
 export default function AdminHealth() {
@@ -12,6 +13,8 @@ export default function AdminHealth() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [toggling, setToggling] = useState<string | null>(null);
+  const [orderLookupId, setOrderLookupId] = useState('');
+  const navigate = useNavigate();
 
   const fetchData = async () => {
     try {
@@ -136,6 +139,33 @@ export default function AdminHealth() {
             </div>
           ))}
         </div>
+      </section>
+
+      {/* Order Lookup */}
+      <section className="bg-white rounded-lg shadow p-4">
+        <h2 className="text-lg font-semibold mb-3">Order Timeline Lookup</h2>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            const trimmed = orderLookupId.trim();
+            if (trimmed) navigate(`/admin/orders/${trimmed}/timeline`);
+          }}
+          className="flex gap-2"
+        >
+          <input
+            type="text"
+            placeholder="Enter Order ID (UUID)"
+            value={orderLookupId}
+            onChange={(e) => setOrderLookupId(e.target.value)}
+            className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+          <button
+            type="submit"
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm whitespace-nowrap"
+          >
+            View Timeline
+          </button>
+        </form>
       </section>
     </div>
   );

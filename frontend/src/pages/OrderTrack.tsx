@@ -14,6 +14,7 @@ import { useToastStore } from '../store';
 export default function OrderTrack() {
   const { id } = useParams<{ id: string }>();
   const [order, setOrder] = useState<OrderDTO | null>(null);
+  const [statusHistory, setStatusHistory] = useState<Array<{ status: string; timestamp: string; note: string }>>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [cancelling, setCancelling] = useState(false);
@@ -43,6 +44,13 @@ export default function OrderTrack() {
     try {
       const data = await orderService.getOrderById(id);
       setOrder(data);
+      // Load status history
+      try {
+        const history = await orderService.getOrderStatusHistory(id);
+        setStatusHistory(history);
+      } catch {
+        // Non-critical — silently ignore
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to load order');
     } finally {
@@ -183,6 +191,28 @@ export default function OrderTrack() {
                     (~{order.estimatedPrepMins} min prep)
                   </span>
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* Status History Timeline */}
+          {statusHistory.length > 0 && (
+            <div className="mb-6">
+              <h3 className="font-semibold text-gray-900 mb-3">Status History</h3>
+              <div className="relative pl-6 space-y-4">
+                <div className="absolute left-2 top-1 bottom-1 w-0.5 bg-gray-200" />
+                {statusHistory.map((entry, idx) => (
+                  <div key={idx} className="relative flex items-start">
+                    <div className={`absolute -left-4 mt-1 w-3 h-3 rounded-full border-2 border-white ${
+                      idx === statusHistory.length - 1 ? 'bg-primary-600' : 'bg-gray-400'
+                    }`} />
+                    <div>
+                      <p className="font-medium text-sm text-gray-900">{entry.status}</p>
+                      <p className="text-xs text-gray-500">{formatDateTime(entry.timestamp)}</p>
+                      {entry.note && <p className="text-xs text-gray-600 mt-0.5">{entry.note}</p>}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           )}

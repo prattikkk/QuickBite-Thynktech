@@ -90,7 +90,12 @@ export const orderService = {
    */
   getOrderStatusHistory: async (orderId: string): Promise<Array<{ status: string; timestamp: string; note: string }>> => {
     const response = await api.get<any, any>(`/orders/${orderId}/status-history`);
-    return response;
+    // Backend returns { id, status, note, changedByUserId, changedAt } — normalise to frontend shape
+    return (response || []).map((entry: any) => ({
+      status: entry.status,
+      timestamp: entry.changedAt ?? entry.timestamp,
+      note: entry.note,
+    }));
   },
 
   /**
