@@ -9,7 +9,7 @@ import CartWidget from './CartWidget';
 import NotificationBell from './NotificationBell';
 
 export default function Header() {
-  const { isAuthenticated, user, logout, isCustomer, isVendor, isDriver } = useAuth();
+  const { isAuthenticated, user, logout, isCustomer, isVendor, isDriver, isAdmin } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleLogout = () => {
@@ -76,6 +76,16 @@ export default function Header() {
                     className="text-gray-700 hover:text-primary-600 transition-colors font-medium"
                   >
                     Dashboard
+                  </Link>
+                )}
+
+                {/* Admin Navigation */}
+                {isAdmin() && (
+                  <Link
+                    to="/admin/health"
+                    className="text-gray-700 hover:text-primary-600 transition-colors font-medium"
+                  >
+                    Health Dashboard
                   </Link>
                 )}
 
@@ -194,6 +204,16 @@ export default function Header() {
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     Dashboard
+                  </Link>
+                )}
+
+                {isAdmin() && (
+                  <Link
+                    to="/admin/health"
+                    className="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Health Dashboard
                   </Link>
                 )}
 

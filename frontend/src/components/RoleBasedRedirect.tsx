@@ -29,7 +29,7 @@ export const RoleBasedRedirect: React.FC = () => {
     case 'DRIVER':
       return <Navigate to="/driver/dashboard" replace />;
     case 'ADMIN':
-      return <Navigate to="/vendor/dashboard" replace />;
+      return <Navigate to="/admin/health" replace />;
     case 'CUSTOMER':
     default:
       return <Navigate to="/vendors" replace />;

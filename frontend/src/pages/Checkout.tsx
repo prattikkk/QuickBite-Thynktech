@@ -153,6 +153,19 @@ function CheckoutForm() {
       return;
     }
 
+    // Guard: validate Stripe is ready BEFORE creating the order
+    // so a missing/invalid publishable key doesn't create orphaned orders.
+    if (paymentMethod === 'CARD' || paymentMethod === 'UPI') {
+      if (!stripe || !elements) {
+        showError('Stripe is not loaded yet — please refresh the page and try again.');
+        return;
+      }
+      if (!elements.getElement(CardElement)) {
+        showError('Card input not found — please refresh and try again.');
+        return;
+      }
+    }
+
     try {
       setSubmitting(true);
 
@@ -170,20 +183,11 @@ function CheckoutForm() {
 
       const order = await orderService.createOrder(orderData);
 
-      // 2. For CARD — confirm the Stripe PaymentIntent on the client
-      if (paymentMethod === 'CARD' && order.paymentClientSecret) {
-        if (!stripe || !elements) {
-          showError('Stripe is still loading — please try again.');
-          return;
-        }
+      // 2. For CARD/UPI — confirm the Stripe PaymentIntent on the client
+      if ((paymentMethod === 'CARD' || paymentMethod === 'UPI') && order.paymentClientSecret) {
+        const cardElement = elements!.getElement(CardElement)!;
 
-        const cardElement = elements.getElement(CardElement);
-        if (!cardElement) {
-          showError('Card element not found');
-          return;
-        }
-
-        const { error } = await stripe.confirmCardPayment(order.paymentClientSecret, {
+        const { error } = await stripe!.confirmCardPayment(order.paymentClientSecret, {
           payment_method: { card: cardElement },
         });
 
@@ -383,8 +387,8 @@ function CheckoutForm() {
             </div>
           </div>
 
-          {/* Stripe Card Element — visible only for CARD */}
-          {paymentMethod === 'CARD' && (
+          {/* Stripe Card Element — visible for CARD and UPI */}
+          {(paymentMethod === 'CARD' || paymentMethod === 'UPI') && (
             <div className="bg-white rounded-lg shadow-md p-6">
               <h2 className="text-xl font-bold mb-4">Card Details</h2>
               <div className="p-4 border rounded-lg">
@@ -479,13 +483,13 @@ function CheckoutForm() {
 
             <button
               type="submit"
-              disabled={submitting || addresses.length === 0 || (paymentMethod === 'CARD' && !stripe)}
+              disabled={submitting || addresses.length === 0 || ((paymentMethod === 'CARD' || paymentMethod === 'UPI') && !stripe)}
               className="w-full bg-primary-600 text-white py-3 rounded-lg hover:bg-primary-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {submitting && <LoadingSpinner size="sm" />}
               {submitting
                 ? 'Processing...'
-                : paymentMethod === 'CARD'
+                : (paymentMethod === 'CARD' || paymentMethod === 'UPI')
                   ? 'Pay & Place Order'
                   : 'Place Order'}
             </button>

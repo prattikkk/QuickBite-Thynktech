@@ -129,7 +129,7 @@ public class OrderController {
      * Role-based access: vendor can update until READY, driver after READY.
      */
     @PatchMapping("/{id}/status")
-    @PreAuthorize("hasAnyRole('VENDOR', 'DRIVER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'VENDOR', 'DRIVER', 'ADMIN')")
     @Operation(summary = "Update order status", description = "Update order status with validation")
     public ResponseEntity<ApiResponse<OrderResponseDTO>> updateOrderStatus(
             @PathVariable UUID id,

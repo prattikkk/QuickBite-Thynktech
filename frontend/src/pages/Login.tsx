@@ -25,7 +25,7 @@ export default function Login() {
       } else if (user.role === 'DRIVER') {
         navigate('/driver/dashboard');
       } else if (user.role === 'ADMIN') {
-        navigate('/vendor/dashboard'); // or admin dashboard
+        navigate('/admin/health');
       } else {
         navigate('/vendors'); // CUSTOMER default
       }

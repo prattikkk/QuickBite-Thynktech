@@ -234,8 +234,9 @@ public class OrderService {
         );
         order.setPayment(payment);
 
-        // For non-COD, authorize payment immediately (stub)
-        if (dto.getPaymentMethod() != OrderCreateDTO.PaymentMethod.CASH_ON_DELIVERY) {
+        // For COD, authorize payment immediately (no Stripe confirmation needed)
+        // For CARD/UPI, payment stays PENDING until Stripe confirms via webhook or client-side confirmation
+        if (dto.getPaymentMethod() == OrderCreateDTO.PaymentMethod.CASH_ON_DELIVERY) {
             payment = paymentService.authorizePayment(payment.getId());
             order.setPaymentStatus(PaymentStatus.AUTHORIZED);
         }

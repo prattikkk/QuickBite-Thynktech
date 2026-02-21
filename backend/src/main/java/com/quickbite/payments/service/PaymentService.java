@@ -103,15 +103,15 @@ public class PaymentService {
         String currency = (request.getCurrency() != null && !request.getCurrency().isBlank())
                 ? request.getCurrency() : "INR";
 
-        // 3. Decide payment path: CARD (Stripe) vs UPI/COD (offline)
+        // 3. Decide payment path: CARD/UPI (Stripe) vs COD (offline)
         boolean isCOD = order.getPaymentMethod() == PaymentMethod.CASH_ON_DELIVERY;
         boolean isUPI = order.getPaymentMethod() == PaymentMethod.UPI;
         boolean isCard = order.getPaymentMethod() == PaymentMethod.CARD;
         String providerPaymentId;
         String clientSecret = null;
 
-        if (isCard && isStripeConfigured()) {
-            // -- Real Stripe PaymentIntent --
+        if ((isCard || isUPI) && isStripeConfigured()) {
+            // -- Real Stripe PaymentIntent (card element handles all online payments) --
             try {
                 PaymentIntentCreateParams params = PaymentIntentCreateParams.builder()
                         .setAmount(amountCents)
@@ -129,9 +129,6 @@ public class PaymentService {
         } else if (isCOD) {
             providerPaymentId = "cod_" + UUID.randomUUID();
             log.info("COD payment — no Stripe intent needed");
-        } else if (isUPI) {
-            providerPaymentId = "upi_" + UUID.randomUUID();
-            log.info("UPI payment — handled offline, no Stripe intent needed");
         } else {
             // Stripe not configured — stub fallback
             providerPaymentId = "stub_pi_" + UUID.randomUUID();
