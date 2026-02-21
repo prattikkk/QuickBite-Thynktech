@@ -101,6 +101,15 @@ export const orderService = {
     const response = await api.get<any, TimelineEntry[]>(`/admin/orders/${orderId}/timeline`);
     return response;
   },
+
+  /**
+   * Reorder — create a new order from a previous order's items.
+   * POST /orders/:orderId/reorder
+   */
+  reorder: async (orderId: string): Promise<OrderDTO> => {
+    const response = await api.post<any, OrderDTO>(`/orders/${orderId}/reorder`);
+    return response;
+  },
 };
 
 export default orderService;

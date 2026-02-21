@@ -58,7 +58,9 @@ public class OrderMapper {
                 .subtotalCents(order.getSubtotalCents())
                 .deliveryFeeCents(order.getDeliveryFeeCents())
                 .taxCents(order.getTaxCents())
+                .discountCents(order.getDiscountCents())
                 .totalCents(order.getTotalCents())
+                .promoCode(order.getPromoCode())
                 .status(order.getStatus().name())
                 .paymentStatus(order.getPaymentStatus() != null ? order.getPaymentStatus().name() : null)
                 .paymentMethod(order.getPaymentMethod() != null ? order.getPaymentMethod().name() : null)
@@ -67,6 +69,8 @@ public class OrderMapper {
                 .createdAt(order.getCreatedAt())
                 .updatedAt(order.getUpdatedAt())
                 .deliveredAt(order.getDeliveredAt())
+                .estimatedDeliveryAt(order.getEstimatedDeliveryAt())
+                .estimatedPrepMins(order.getEstimatedPrepMins())
                 .specialInstructions(order.getSpecialInstructions())
                 .cancellationReason(order.getCancellationReason())
                 .build();

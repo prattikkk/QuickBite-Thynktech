@@ -15,9 +15,12 @@ import com.quickbite.orders.exception.OrderNotFoundException;
 import com.quickbite.orders.exception.InvalidTransitionException;
 import com.quickbite.orders.mapper.OrderMapper;
 import com.quickbite.orders.repository.OrderRepository;
+import com.quickbite.orders.service.EtaService;
 import com.quickbite.orders.service.EventTimelineService;
 import com.quickbite.orders.service.OrderService;
 import com.quickbite.orders.service.OrderStateMachine;
+import com.quickbite.notifications.service.NotificationService;
+import com.quickbite.promotions.service.PromoCodeService;
 import com.quickbite.payments.service.PaymentService;
 import com.quickbite.payments.entity.Payment;
 import com.quickbite.payments.entity.PaymentMethod;
@@ -92,6 +95,15 @@ class OrderServiceTest {
     @Mock
     private EventTimelineService eventTimelineService;
 
+    @Mock
+    private PromoCodeService promoCodeService;
+
+    @Mock
+    private NotificationService notificationService;
+
+    @Mock
+    private EtaService etaService;
+
     private OrderService orderService;
 
     private UUID customerId;
@@ -113,6 +125,7 @@ class OrderServiceTest {
                 addressRepository, deliveryStatusRepository, paymentService,
                 driverAssignmentService, orderMapper, orderUpdatePublisher,
                 orderStateMachine, eventTimelineService,
+                promoCodeService, notificationService, etaService,
                 new SimpleMeterRegistry());
 
         customerId = UUID.randomUUID();

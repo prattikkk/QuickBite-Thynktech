@@ -35,6 +35,9 @@ public class OrderCreateDTO {
 
     private String specialInstructions;
 
+    /** Optional promo code to apply discount. */
+    private String promoCode;
+
     public enum PaymentMethod {
         CARD,
         UPI,

@@ -21,7 +21,9 @@ export interface OrderDTO {
   subtotalCents: number;
   deliveryFeeCents: number;
   taxCents: number;
+  discountCents?: number;
   totalCents: number;
+  promoCode?: string;
   paymentMethod: string;
   paymentStatus: string;
   /** Stripe PaymentIntent client secret — only present if card/online payment is pending */
@@ -32,6 +34,8 @@ export interface OrderDTO {
   createdAt: string;
   updatedAt: string;
   deliveredAt?: string;
+  estimatedDeliveryAt?: string;
+  estimatedPrepMins?: number;
 }
 
 export type OrderStatus =
@@ -70,6 +74,7 @@ export interface OrderCreateRequest {
   addressId: string;
   paymentMethod: PaymentMethod;
   specialInstructions?: string;
+  promoCode?: string;
 }
 
 export interface OrderItemCreateRequest {

@@ -7,7 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { useCartStore, useToastStore } from '../store';
-import { addressService, orderService } from '../services';
+import { addressService, orderService, promoService } from '../services';
 import { AddressDTO, PaymentMethod } from '../types';
 import { formatCurrencyCompact } from '../utils';
 import { LoadingSpinner } from '../components';
@@ -56,6 +56,13 @@ function CheckoutForm() {
   const [specialInstructions, setSpecialInstructions] = useState('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+
+  // Promo code state
+  const [promoCode, setPromoCode] = useState('');
+  const [promoApplied, setPromoApplied] = useState(false);
+  const [promoDiscount, setPromoDiscount] = useState(0);
+  const [promoMessage, setPromoMessage] = useState('');
+  const [validatingPromo, setValidatingPromo] = useState(false);
 
   // Inline "Add Address" form state
   const [showAddressForm, setShowAddressForm] = useState(false);
@@ -106,6 +113,38 @@ function CheckoutForm() {
     }
   };
 
+  const handleApplyPromo = async () => {
+    if (!promoCode.trim()) return;
+    try {
+      setValidatingPromo(true);
+      setPromoMessage('');
+      const subtotal = getSubtotalCents();
+      const result = await promoService.validatePromo(promoCode.trim(), subtotal);
+      if (result.valid) {
+        setPromoApplied(true);
+        setPromoDiscount(result.discountCents ?? 0);
+        setPromoMessage(result.message || 'Promo applied!');
+      } else {
+        setPromoApplied(false);
+        setPromoDiscount(0);
+        setPromoMessage(result.message || 'Invalid promo code');
+      }
+    } catch (err: any) {
+      setPromoApplied(false);
+      setPromoDiscount(0);
+      setPromoMessage(err.message || 'Failed to validate promo');
+    } finally {
+      setValidatingPromo(false);
+    }
+  };
+
+  const handleRemovePromo = () => {
+    setPromoCode('');
+    setPromoApplied(false);
+    setPromoDiscount(0);
+    setPromoMessage('');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -126,6 +165,7 @@ function CheckoutForm() {
         addressId: selectedAddressId,
         paymentMethod,
         specialInstructions: specialInstructions.trim() || undefined,
+        promoCode: promoApplied ? promoCode.trim() : undefined,
       };
 
       const order = await orderService.createOrder(orderData);
@@ -169,7 +209,7 @@ function CheckoutForm() {
   const subtotal = getSubtotalCents();
   const deliveryFee = 5000;
   const tax = Math.round(subtotal * 0.05);
-  const total = subtotal + deliveryFee + tax;
+  const total = subtotal + deliveryFee + tax - promoDiscount;
 
   if (loading) {
     return (
@@ -356,6 +396,47 @@ function CheckoutForm() {
             </div>
           )}
 
+          {/* Promo Code */}
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h2 className="text-xl font-bold mb-4">Promo Code</h2>
+            {promoApplied ? (
+              <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
+                <div>
+                  <span className="text-green-700 font-medium">{promoCode.toUpperCase()}</span>
+                  <span className="text-green-600 text-sm ml-2">-{formatCurrencyCompact(promoDiscount)}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleRemovePromo}
+                  className="text-sm text-red-600 hover:text-red-700 font-medium"
+                >
+                  Remove
+                </button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={promoCode}
+                  onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                  placeholder="Enter promo code"
+                  className="flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                />
+                <button
+                  type="button"
+                  onClick={handleApplyPromo}
+                  disabled={validatingPromo || !promoCode.trim()}
+                  className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 font-medium text-sm"
+                >
+                  {validatingPromo ? 'Checking...' : 'Apply'}
+                </button>
+              </div>
+            )}
+            {promoMessage && !promoApplied && (
+              <p className="text-sm text-red-600 mt-2">{promoMessage}</p>
+            )}
+          </div>
+
           {/* Special Instructions */}
           <div className="bg-white rounded-lg shadow-md p-6">
             <h2 className="text-xl font-bold mb-4">Special Instructions</h2>
@@ -384,6 +465,12 @@ function CheckoutForm() {
                 <span>Tax</span>
                 <span>{formatCurrencyCompact(tax)}</span>
               </div>
+              {promoDiscount > 0 && (
+                <div className="flex justify-between text-green-600">
+                  <span>Discount</span>
+                  <span>-{formatCurrencyCompact(promoDiscount)}</span>
+                </div>
+              )}
               <div className="border-t pt-2 flex justify-between text-lg font-bold">
                 <span>Total</span>
                 <span className="text-primary-600">{formatCurrencyCompact(total)}</span>

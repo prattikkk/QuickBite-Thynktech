@@ -24,6 +24,9 @@ import com.quickbite.users.repository.UserRepository;
 import com.quickbite.vendors.entity.MenuItem;
 import com.quickbite.vendors.entity.Vendor;
 import com.quickbite.vendors.repository.MenuItemRepository;
+import com.quickbite.promotions.service.PromoCodeService;
+import com.quickbite.notifications.service.NotificationService;
+import com.quickbite.notifications.entity.NotificationType;
 import com.quickbite.websocket.OrderUpdatePublisher;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -57,6 +60,9 @@ public class OrderService {
     private final OrderUpdatePublisher orderUpdatePublisher;
     private final OrderStateMachine orderStateMachine;
     private final EventTimelineService eventTimelineService;
+    private final PromoCodeService promoCodeService;
+    private final NotificationService notificationService;
+    private final EtaService etaService;
 
     // Metrics
     private final Counter orderCreatedCounter;
@@ -74,6 +80,9 @@ public class OrderService {
                         OrderUpdatePublisher orderUpdatePublisher,
                         OrderStateMachine orderStateMachine,
                         EventTimelineService eventTimelineService,
+                        PromoCodeService promoCodeService,
+                        NotificationService notificationService,
+                        EtaService etaService,
                         MeterRegistry meterRegistry) {
         this.orderRepository = orderRepository;
         this.menuItemRepository = menuItemRepository;
@@ -86,6 +95,9 @@ public class OrderService {
         this.orderUpdatePublisher = orderUpdatePublisher;
         this.orderStateMachine = orderStateMachine;
         this.eventTimelineService = eventTimelineService;
+        this.promoCodeService = promoCodeService;
+        this.notificationService = notificationService;
+        this.etaService = etaService;
 
         this.orderCreatedCounter = Counter.builder("orders.created")
                 .description("Total orders created")
@@ -176,6 +188,16 @@ public class OrderService {
         long taxCents = Math.round(subtotalCents * TAX_RATE);
         long totalCents = subtotalCents + taxCents + DELIVERY_FEE_CENTS;
 
+        // 5b. Apply promo code discount (Phase 3)
+        long discountCents = 0;
+        String promoCode = null;
+        if (dto.getPromoCode() != null && !dto.getPromoCode().isBlank()) {
+            discountCents = promoCodeService.applyPromo(dto.getPromoCode().trim(), subtotalCents);
+            promoCode = dto.getPromoCode().trim().toUpperCase();
+            totalCents -= discountCents;
+            if (totalCents < 0) totalCents = 0;
+        }
+
         // 6. Create order
         Order order = Order.builder()
                 .orderNumber(generateOrderNumber())
@@ -186,7 +208,9 @@ public class OrderService {
                 .subtotalCents(subtotalCents)
                 .deliveryFeeCents(DELIVERY_FEE_CENTS)
                 .taxCents(taxCents)
+                .discountCents(discountCents)
                 .totalCents(totalCents)
+                .promoCode(promoCode)
                 .paymentMethod(mapPaymentMethod(dto.getPaymentMethod()))
                 .paymentStatus(PaymentStatus.PENDING)
                 .scheduledTime(dto.getScheduledTime() != null ? dto.getScheduledTime().atOffset(ZoneOffset.UTC) : OffsetDateTime.now())
@@ -226,6 +250,28 @@ public class OrderService {
 
         // 9. Send vendor notification (stub)
         notifyVendor(order);
+
+        // 9b. Calculate ETA (Phase 3)
+        try {
+            int prepMins = etaService.estimatePrepTime(order);
+            OffsetDateTime eta = etaService.estimateDelivery(order);
+            order.setEstimatedPrepMins(prepMins);
+            order.setEstimatedDeliveryAt(eta);
+            order = orderRepository.save(order);
+        } catch (Exception e) {
+            log.warn("ETA calculation failed for order {}: {}", order.getId(), e.getMessage());
+        }
+
+        // 9c. Create notification for customer (Phase 3)
+        try {
+            notificationService.createNotification(
+                    customer.getId(), NotificationType.ORDER_UPDATE,
+                    "Order Placed",
+                    "Your order " + order.getOrderNumber() + " has been placed!",
+                    order.getId());
+        } catch (Exception e) {
+            log.warn("Failed to create notification for order {}: {}", order.getId(), e.getMessage());
+        }
 
         // 10. Publish real-time update
         orderUpdatePublisher.publishOrderUpdate(order);
@@ -439,6 +485,49 @@ public class OrderService {
         orderUpdatePublisher.publishOrderUpdate(order);
 
         return orderMapper.toResponseDTO(order);
+    }
+
+    // ========== Reorder (Phase 3) ==========
+
+    /**
+     * Create a new order by cloning items from a previous order.
+     * Uses the customer's default (or first) address and CASH_ON_DELIVERY as defaults.
+     */
+    @Transactional
+    public OrderResponseDTO reorderFromPrevious(UUID previousOrderId, UUID customerId) {
+        log.info("Reorder requested by customer {} from order {}", customerId, previousOrderId);
+
+        Order previousOrder = orderRepository.findById(previousOrderId)
+                .orElseThrow(() -> new OrderNotFoundException(previousOrderId));
+
+        if (!previousOrder.getCustomer().getId().equals(customerId)) {
+            throw new BusinessException("Cannot reorder from another customer's order");
+        }
+
+        // Build DTO from previous order items
+        var items = previousOrder.getItems().stream()
+                .map(item -> com.quickbite.orders.dto.OrderItemDTO.builder()
+                        .menuItemId(item.getMenuItem().getId())
+                        .quantity(item.getQuantity())
+                        .specialInstructions(item.getSpecialInstructions())
+                        .build())
+                .collect(Collectors.toList());
+
+        // Use same address or fallback to first address
+        UUID addressId = previousOrder.getDeliveryAddress() != null
+                ? previousOrder.getDeliveryAddress().getId()
+                : addressRepository.findByUserId(customerId).stream()
+                    .findFirst().map(Address::getId)
+                    .orElseThrow(() -> new BusinessException("No delivery address found"));
+
+        OrderCreateDTO dto = OrderCreateDTO.builder()
+                .items(items)
+                .addressId(addressId)
+                .paymentMethod(OrderCreateDTO.PaymentMethod.CASH_ON_DELIVERY)
+                .specialInstructions(previousOrder.getSpecialInstructions())
+                .build();
+
+        return createOrder(dto, customerId);
     }
 
     // ========== Helper Methods ==========

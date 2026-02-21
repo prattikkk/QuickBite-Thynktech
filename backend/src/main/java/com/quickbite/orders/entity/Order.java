@@ -104,6 +104,23 @@ public class Order {
     @Column(name = "special_instructions", columnDefinition = "text")
     private String specialInstructions;
 
+    // ---- Phase 3: Growth fields ----
+
+    @Column(name = "promo_code", length = 50)
+    private String promoCode;
+
+    @Column(name = "discount_cents", nullable = false)
+    @Builder.Default
+    private Long discountCents = 0L;
+
+    @Column(name = "estimated_delivery_at", columnDefinition = "timestamptz")
+    private OffsetDateTime estimatedDeliveryAt;
+
+    @Column(name = "estimated_prep_mins")
+    private Integer estimatedPrepMins;
+
+    // ---- end Phase 3 ----
+
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<OrderItem> orderItems = new ArrayList<>();

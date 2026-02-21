@@ -168,6 +168,25 @@ export default function OrderTrack() {
             </div>
           )}
 
+          {/* ETA Display */}
+          {order.estimatedDeliveryAt && !['DELIVERED', 'CANCELLED', 'REJECTED'].includes(order.status) && (
+            <div className="mb-6 p-4 bg-primary-50 border border-primary-200 rounded-lg">
+              <div className="flex items-center gap-2">
+                <svg className="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span className="text-primary-800 font-medium">
+                  Estimated Delivery: {new Date(order.estimatedDeliveryAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </span>
+                {order.estimatedPrepMins && (
+                  <span className="text-sm text-primary-600 ml-2">
+                    (~{order.estimatedPrepMins} min prep)
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Order Details */}
           <div className="grid md:grid-cols-2 gap-6">
             <div>
@@ -229,6 +248,12 @@ export default function OrderTrack() {
               <span>Tax</span>
               <span>{formatCurrencyCompact(order.taxCents)}</span>
             </div>
+            {(order.discountCents ?? 0) > 0 && (
+              <div className="flex justify-between text-green-600">
+                <span>Discount {order.promoCode && <span className="text-xs">({order.promoCode})</span>}</span>
+                <span>-{formatCurrencyCompact(order.discountCents!)}</span>
+              </div>
+            )}
             <div className="flex justify-between text-lg font-bold">
               <span>Total</span>
               <span className="text-primary-600">{formatCurrencyCompact(order.totalCents)}</span>

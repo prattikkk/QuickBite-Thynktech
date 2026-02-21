@@ -45,7 +45,9 @@ public class OrderResponseDTO {
     private Long subtotalCents;
     private Long deliveryFeeCents;
     private Long taxCents;
+    private Long discountCents;
     private Long totalCents;
+    private String promoCode;
     
     // Status
     private String status;
@@ -60,6 +62,8 @@ public class OrderResponseDTO {
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
     private OffsetDateTime deliveredAt;
+    private OffsetDateTime estimatedDeliveryAt;
+    private Integer estimatedPrepMins;
     
     private String specialInstructions;
     private String cancellationReason;

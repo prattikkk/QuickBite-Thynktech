@@ -3,7 +3,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { orderService } from '../services';
 import { OrderDTO } from '../types';
 import { LoadingSpinner } from '../components';
@@ -26,7 +26,9 @@ const STATUS_COLORS: Record<string, string> = {
 export default function MyOrders() {
   const [orders, setOrders] = useState<OrderDTO[]>([]);
   const [loading, setLoading] = useState(true);
-  const { error: showError } = useToastStore();
+  const [reordering, setReordering] = useState<string | null>(null);
+  const { error: showError, success } = useToastStore();
+  const navigate = useNavigate();
 
   useEffect(() => {
     loadOrders();
@@ -41,6 +43,21 @@ export default function MyOrders() {
       showError(err.message || 'Failed to load orders');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleReorder = async (e: React.MouseEvent, orderId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      setReordering(orderId);
+      const newOrder = await orderService.reorder(orderId);
+      success('Reorder placed successfully!');
+      navigate(`/orders/${newOrder.id}`);
+    } catch (err: any) {
+      showError(err.message || 'Failed to reorder');
+    } finally {
+      setReordering(null);
     }
   };
 
@@ -96,9 +113,20 @@ export default function MyOrders() {
                   <p className="text-sm text-gray-600">
                     {order.items.length} item{order.items.length !== 1 ? 's' : ''}
                   </p>
-                  <p className="text-lg font-bold text-primary-600">
-                    {formatCurrencyCompact(order.totalCents)}
-                  </p>
+                  <div className="flex items-center gap-3">
+                    {['DELIVERED', 'CANCELLED', 'REJECTED'].includes(order.status) && (
+                      <button
+                        onClick={(e) => handleReorder(e, order.id)}
+                        disabled={reordering === order.id}
+                        className="px-3 py-1 text-sm bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 transition-colors"
+                      >
+                        {reordering === order.id ? 'Reordering...' : 'Reorder'}
+                      </button>
+                    )}
+                    <p className="text-lg font-bold text-primary-600">
+                      {formatCurrencyCompact(order.totalCents)}
+                    </p>
+                  </div>
                 </div>
               </Link>
             ))}

@@ -10,3 +10,6 @@ export { default as paymentService } from './payment.service';
 export { default as addressService } from './address.service';
 export { default as driverService } from './driver.service';
 export { default as adminService } from './admin.service';
+export { default as favoriteService } from './favorite.service';
+export { default as notificationService } from './notification.service';
+export { default as promoService } from './promo.service';

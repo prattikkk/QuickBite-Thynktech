@@ -20,6 +20,7 @@ import VendorDashboard from './pages/VendorDashboard';
 import DriverDashboard from './pages/DriverDashboard';
 import AdminOrderTimeline from './pages/AdminOrderTimeline';
 import AdminHealth from './pages/AdminHealth';
+import Favorites from './pages/Favorites';
 
 function App() {
   const loadFromStorage = useAuthStore((state) => state.loadFromStorage);
@@ -72,6 +73,14 @@ function App() {
               element={
                 <ProtectedRoute requiredRole="CUSTOMER">
                   <Checkout />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/favorites"
+              element={
+                <ProtectedRoute requiredRole="CUSTOMER">
+                  <Favorites />
                 </ProtectedRoute>
               }
             />

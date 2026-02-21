@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks';
 import CartWidget from './CartWidget';
+import NotificationBell from './NotificationBell';
 
 export default function Header() {
   const { isAuthenticated, user, logout, isCustomer, isVendor, isDriver } = useAuth();
@@ -42,11 +43,18 @@ export default function Header() {
                       Restaurants
                     </Link>
                     <Link
+                      to="/favorites"
+                      className="text-gray-700 hover:text-primary-600 transition-colors font-medium"
+                    >
+                      Favorites
+                    </Link>
+                    <Link
                       to="/orders"
                       className="text-gray-700 hover:text-primary-600 transition-colors font-medium"
                     >
                       My Orders
                     </Link>
+                    <NotificationBell />
                     <CartWidget />
                   </>
                 )}

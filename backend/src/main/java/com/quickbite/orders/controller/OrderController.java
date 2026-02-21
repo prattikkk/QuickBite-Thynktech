@@ -222,6 +222,23 @@ public class OrderController {
         return ResponseEntity.ok(ApiResponse.success("Driver assigned successfully", order));
     }
 
+    /**
+     * Reorder — create a new order by cloning items from a previous order.
+     */
+    @PostMapping("/{id}/reorder")
+    @PreAuthorize("hasRole('CUSTOMER')")
+    @Operation(summary = "Reorder", description = "Create a new order from a previous order's items")
+    public ResponseEntity<ApiResponse<OrderResponseDTO>> reorder(
+            @PathVariable UUID id,
+            Authentication authentication
+    ) {
+        UUID customerId = extractUserId(authentication);
+        log.info("Customer {} reordering from order {}", customerId, id);
+        OrderResponseDTO order = orderService.reorderFromPrevious(id, customerId);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success("Reorder placed successfully", order));
+    }
+
     // ========== Helper Methods ==========
 
     private UUID extractUserId(Authentication authentication) {
