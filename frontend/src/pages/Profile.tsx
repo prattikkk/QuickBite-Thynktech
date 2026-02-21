@@ -8,7 +8,7 @@ import { useAuthStore, useToastStore } from '../store';
 import { userService, UserProfile, ProfileUpdateRequest } from '../services/user.service';
 
 export default function Profile() {
-  const { user, logout } = useAuthStore();
+  const { logout } = useAuthStore();
   const { success, error: showError } = useToastStore();
 
   const [profile, setProfile] = useState<UserProfile | null>(null);

@@ -20,6 +20,7 @@ import VendorDashboard from './pages/VendorDashboard';
 import DriverDashboard from './pages/DriverDashboard';
 import AdminOrderTimeline from './pages/AdminOrderTimeline';
 import AdminHealth from './pages/AdminHealth';
+import AdminManagement from './pages/AdminManagement';
 import Favorites from './pages/Favorites';
 import Profile from './pages/Profile';
 
@@ -144,6 +145,14 @@ function App() {
               element={
                 <ProtectedRoute requiredRole="ADMIN">
                   <AdminHealth />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/management"
+              element={
+                <ProtectedRoute requiredRole="ADMIN">
+                  <AdminManagement />
                 </ProtectedRoute>
               }
             />

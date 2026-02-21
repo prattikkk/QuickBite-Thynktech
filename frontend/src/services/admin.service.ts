@@ -66,6 +66,50 @@ export const adminService = {
     const response = await api.put(`/admin/feature-flags/${key}`, { enabled });
     return response;
   },
+
+  // ── User Management ───────────────────────────────────────────────
+
+  /**
+   * List all users (paginated, optional search/role filter)
+   * GET /admin/users
+   */
+  listUsers: async (params?: { page?: number; size?: number; search?: string; role?: string }): Promise<any> => {
+    const response = await api.get<any, any>('/admin/users', { params });
+    return response;
+  },
+
+  /**
+   * Ban or activate a user
+   * PUT /admin/users/:userId/status?active=bool
+   */
+  setUserStatus: async (userId: string, active: boolean): Promise<any> => {
+    const response = await api.put<any, any>(`/admin/users/${userId}/status`, null, {
+      params: { active },
+    });
+    return response;
+  },
+
+  // ── Vendor Management ─────────────────────────────────────────────
+
+  /**
+   * List all vendors (including inactive)
+   * GET /admin/vendors
+   */
+  listVendors: async (): Promise<any> => {
+    const response = await api.get<any, any>('/admin/vendors');
+    return response;
+  },
+
+  /**
+   * Approve or deactivate a vendor
+   * PUT /admin/vendors/:vendorId/approve?active=bool
+   */
+  approveVendor: async (vendorId: string, active: boolean): Promise<any> => {
+    const response = await api.put<any, any>(`/admin/vendors/${vendorId}/approve`, null, {
+      params: { active },
+    });
+    return response;
+  },
 };
 
 export default adminService;

@@ -14,5 +14,6 @@ export { default as VendorDashboard } from './VendorDashboard';
 export { default as DriverDashboard } from './DriverDashboard';
 export { default as AdminOrderTimeline } from './AdminOrderTimeline';
 export { default as AdminHealth } from './AdminHealth';
+export { default as AdminManagement } from './AdminManagement';
 export { default as Favorites } from './Favorites';
 export { default as Profile } from './Profile';

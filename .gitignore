@@ -94,3 +94,8 @@ coverage/
 *.tmp
 *.temp
 .cache
+
+# Test output logs
+test_*.txt
+p5_results.txt
+mvn_*.txt

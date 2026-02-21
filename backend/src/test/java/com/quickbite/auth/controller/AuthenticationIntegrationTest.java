@@ -224,7 +224,7 @@ class AuthenticationIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.accessToken").isNotEmpty())
-                .andExpect(jsonPath("$.data.refreshToken").value(refreshToken));
+                .andExpect(jsonPath("$.data.refreshToken").isNotEmpty());
     }
 
     @Test

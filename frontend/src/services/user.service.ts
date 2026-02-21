@@ -30,20 +30,20 @@ export interface DataExport {
 export const userService = {
   /** GET /api/users/me */
   getProfile: async (): Promise<UserProfile> => {
-    const res = await api.get<any>('/users/me');
-    return res.data?.data ?? res.data;
+    const response = await api.get<any, UserProfile>('/users/me');
+    return response;
   },
 
   /** PUT /api/users/me */
   updateProfile: async (dto: ProfileUpdateRequest): Promise<UserProfile> => {
-    const res = await api.put<any>('/users/me', dto);
-    return res.data?.data ?? res.data;
+    const response = await api.put<any, UserProfile>('/users/me', dto);
+    return response;
   },
 
   /** GET /api/users/me/export */
   exportData: async (): Promise<DataExport> => {
-    const res = await api.get<any>('/users/me/export');
-    return res.data?.data ?? res.data;
+    const response = await api.get<any, DataExport>('/users/me/export');
+    return response;
   },
 
   /** DELETE /api/users/me */
