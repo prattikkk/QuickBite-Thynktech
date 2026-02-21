@@ -20,7 +20,8 @@ import com.stripe.model.Refund;
 import com.stripe.param.PaymentIntentCaptureParams;
 import com.stripe.param.PaymentIntentCreateParams;
 import com.stripe.param.RefundCreateParams;
-import lombok.RequiredArgsConstructor;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,7 +35,6 @@ import java.util.UUID;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class PaymentService {
 
     private final PaymentRepository paymentRepository;
@@ -43,6 +43,36 @@ public class PaymentService {
     private final PaymentProperties paymentProperties;
     private final ObjectMapper objectMapper;
     private final WebhookEventProcessor webhookEventProcessor;
+
+    // Metrics
+    private final Counter paymentIntentCounter;
+    private final Counter paymentSuccessCounter;
+    private final Counter paymentFailedCounter;
+
+    public PaymentService(PaymentRepository paymentRepository,
+                          OrderRepository orderRepository,
+                          WebhookEventRepository webhookEventRepository,
+                          PaymentProperties paymentProperties,
+                          ObjectMapper objectMapper,
+                          WebhookEventProcessor webhookEventProcessor,
+                          MeterRegistry meterRegistry) {
+        this.paymentRepository = paymentRepository;
+        this.orderRepository = orderRepository;
+        this.webhookEventRepository = webhookEventRepository;
+        this.paymentProperties = paymentProperties;
+        this.objectMapper = objectMapper;
+        this.webhookEventProcessor = webhookEventProcessor;
+
+        this.paymentIntentCounter = Counter.builder("payments.intent.created")
+                .description("Total payment intents created")
+                .register(meterRegistry);
+        this.paymentSuccessCounter = Counter.builder("payments.success")
+                .description("Total successful payments")
+                .register(meterRegistry);
+        this.paymentFailedCounter = Counter.builder("payments.failed")
+                .description("Total failed payments")
+                .register(meterRegistry);
+    }
 
     /**
      * Create payment intent for an order.
@@ -123,6 +153,8 @@ public class PaymentService {
         payment = paymentRepository.save(payment);
         log.info("Payment intent created: {} with provider ID: {}", payment.getId(), providerPaymentId);
 
+        paymentIntentCounter.increment();
+
         // 5. Link payment to order
         order.setPayment(payment);
         order.setPaymentStatus(PaymentStatus.PENDING);
@@ -157,6 +189,8 @@ public class PaymentService {
         payment.setPaidAt(OffsetDateTime.now());
         paymentRepository.save(payment);
 
+        paymentSuccessCounter.increment();
+
         // Update order payment status
         updateOrderPaymentStatus(payment.getId(), PaymentStatus.CAPTURED);
 
@@ -189,6 +223,8 @@ public class PaymentService {
         payment.setStatus(PaymentStatus.REFUNDED);
         payment.setFailureReason(reason);
         paymentRepository.save(payment);
+
+        paymentFailedCounter.increment();
 
         // Update order payment status
         updateOrderPaymentStatus(payment.getId(), PaymentStatus.REFUNDED);

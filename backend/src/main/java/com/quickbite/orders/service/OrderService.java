@@ -25,7 +25,9 @@ import com.quickbite.vendors.entity.MenuItem;
 import com.quickbite.vendors.entity.Vendor;
 import com.quickbite.vendors.repository.MenuItemRepository;
 import com.quickbite.websocket.OrderUpdatePublisher;
-import lombok.RequiredArgsConstructor;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -42,7 +44,6 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class OrderService {
 
     private final OrderRepository orderRepository;
@@ -57,6 +58,46 @@ public class OrderService {
     private final OrderStateMachine orderStateMachine;
     private final EventTimelineService eventTimelineService;
 
+    // Metrics
+    private final Counter orderCreatedCounter;
+    private final Counter orderTransitionCounter;
+    private final Timer orderCreateTimer;
+
+    public OrderService(OrderRepository orderRepository,
+                        MenuItemRepository menuItemRepository,
+                        UserRepository userRepository,
+                        AddressRepository addressRepository,
+                        DeliveryStatusRepository deliveryStatusRepository,
+                        PaymentService paymentService,
+                        DriverAssignmentService driverAssignmentService,
+                        OrderMapper orderMapper,
+                        OrderUpdatePublisher orderUpdatePublisher,
+                        OrderStateMachine orderStateMachine,
+                        EventTimelineService eventTimelineService,
+                        MeterRegistry meterRegistry) {
+        this.orderRepository = orderRepository;
+        this.menuItemRepository = menuItemRepository;
+        this.userRepository = userRepository;
+        this.addressRepository = addressRepository;
+        this.deliveryStatusRepository = deliveryStatusRepository;
+        this.paymentService = paymentService;
+        this.driverAssignmentService = driverAssignmentService;
+        this.orderMapper = orderMapper;
+        this.orderUpdatePublisher = orderUpdatePublisher;
+        this.orderStateMachine = orderStateMachine;
+        this.eventTimelineService = eventTimelineService;
+
+        this.orderCreatedCounter = Counter.builder("orders.created")
+                .description("Total orders created")
+                .register(meterRegistry);
+        this.orderTransitionCounter = Counter.builder("orders.transitions")
+                .description("Total order state transitions")
+                .register(meterRegistry);
+        this.orderCreateTimer = Timer.builder("orders.create.duration")
+                .description("Time to create an order")
+                .register(meterRegistry);
+    }
+
     // Tax and delivery fee configuration (could move to properties)
     private static final double TAX_RATE = 0.05; // 5% tax
     private static final long DELIVERY_FEE_CENTS = 5000; // ₹50
@@ -70,6 +111,10 @@ public class OrderService {
      */
     @Transactional
     public OrderResponseDTO createOrder(OrderCreateDTO dto, UUID customerId) {
+        return orderCreateTimer.record(() -> doCreateOrder(dto, customerId));
+    }
+
+    private OrderResponseDTO doCreateOrder(OrderCreateDTO dto, UUID customerId) {
         log.info("Creating order for customer: {} with {} items", customerId, dto.getItems().size());
 
         // 1. Load customer
@@ -185,6 +230,7 @@ public class OrderService {
         // 10. Publish real-time update
         orderUpdatePublisher.publishOrderUpdate(order);
 
+        orderCreatedCounter.increment();
         return orderMapper.toResponseDTO(order);
     }
 
@@ -318,6 +364,7 @@ public class OrderService {
         // Publish real-time update
         orderUpdatePublisher.publishOrderUpdate(order);
 
+        orderTransitionCounter.increment();
         return orderMapper.toResponseDTO(order);
     }
 

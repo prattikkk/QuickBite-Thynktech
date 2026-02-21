@@ -6,6 +6,7 @@ import com.quickbite.payments.entity.WebhookDlq;
 import com.quickbite.payments.entity.WebhookEvent;
 import com.quickbite.payments.repository.WebhookDlqRepository;
 import com.quickbite.payments.repository.WebhookEventRepository;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -42,8 +43,15 @@ class WebhookProcessorServiceTest {
     @Spy
     private ObjectMapper objectMapper = new ObjectMapper();
 
-    @InjectMocks
     private WebhookProcessorService service;
+
+    @BeforeEach
+    void setUp() {
+        service = new WebhookProcessorService(
+                webhookEventRepository, webhookDlqRepository,
+                webhookEventProcessor, objectMapper,
+                new SimpleMeterRegistry());
+    }
 
     private WebhookEvent createEvent(int attempts, int maxAttempts) {
         return WebhookEvent.builder()

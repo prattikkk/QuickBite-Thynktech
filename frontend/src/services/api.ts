@@ -44,6 +44,11 @@ api.interceptors.request.use(
       }
     }
 
+    // Attach X-Request-Id for correlation tracking
+    if (config.headers && !config.headers['X-Request-Id']) {
+      config.headers['X-Request-Id'] = generateIdempotencyKey();
+    }
+
     return config;
   },
   (error) => {

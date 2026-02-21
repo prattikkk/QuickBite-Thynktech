@@ -19,6 +19,7 @@ import MyOrders from './pages/MyOrders';
 import VendorDashboard from './pages/VendorDashboard';
 import DriverDashboard from './pages/DriverDashboard';
 import AdminOrderTimeline from './pages/AdminOrderTimeline';
+import AdminHealth from './pages/AdminHealth';
 
 function App() {
   const loadFromStorage = useAuthStore((state) => state.loadFromStorage);
@@ -117,6 +118,14 @@ function App() {
               element={
                 <ProtectedRoute requiredRole="ADMIN">
                   <AdminOrderTimeline />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/health"
+              element={
+                <ProtectedRoute requiredRole="ADMIN">
+                  <AdminHealth />
                 </ProtectedRoute>
               }
             />

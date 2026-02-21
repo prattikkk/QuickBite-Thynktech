@@ -6,7 +6,8 @@ import com.quickbite.payments.entity.WebhookDlq;
 import com.quickbite.payments.entity.WebhookEvent;
 import com.quickbite.payments.repository.WebhookDlqRepository;
 import com.quickbite.payments.repository.WebhookEventRepository;
-import lombok.RequiredArgsConstructor;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -25,13 +26,38 @@ import java.util.List;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class WebhookProcessorService {
 
     private final WebhookEventRepository webhookEventRepository;
     private final WebhookDlqRepository webhookDlqRepository;
     private final WebhookEventProcessor webhookEventProcessor;
     private final ObjectMapper objectMapper;
+
+    // Metrics
+    private final Counter webhookProcessedCounter;
+    private final Counter webhookFailedCounter;
+    private final Counter webhookDlqCounter;
+
+    public WebhookProcessorService(WebhookEventRepository webhookEventRepository,
+                                   WebhookDlqRepository webhookDlqRepository,
+                                   WebhookEventProcessor webhookEventProcessor,
+                                   ObjectMapper objectMapper,
+                                   MeterRegistry meterRegistry) {
+        this.webhookEventRepository = webhookEventRepository;
+        this.webhookDlqRepository = webhookDlqRepository;
+        this.webhookEventProcessor = webhookEventProcessor;
+        this.objectMapper = objectMapper;
+
+        this.webhookProcessedCounter = Counter.builder("webhooks.processed")
+                .description("Total webhooks processed successfully")
+                .register(meterRegistry);
+        this.webhookFailedCounter = Counter.builder("webhooks.failed")
+                .description("Total webhook processing failures")
+                .register(meterRegistry);
+        this.webhookDlqCounter = Counter.builder("webhooks.dlq")
+                .description("Total webhooks moved to dead-letter queue")
+                .register(meterRegistry);
+    }
 
     /** Base backoff in seconds — doubles each retry (30, 60, 120, 240, 480…). */
     private static final int BASE_BACKOFF_SECONDS = 30;
@@ -68,6 +94,7 @@ public class WebhookProcessorService {
                 event.setAttempts(event.getAttempts() + 1);
                 webhookEventRepository.save(event);
                 log.info("Webhook event {} processed successfully on attempt {}", event.getProviderEventId(), event.getAttempts());
+                webhookProcessedCounter.increment();
             } else {
                 handleFailure(event, "Processing returned false");
             }
@@ -77,6 +104,7 @@ public class WebhookProcessorService {
     }
 
     private void handleFailure(WebhookEvent event, String error) {
+        webhookFailedCounter.increment();
         int newAttempts = event.getAttempts() + 1;
         event.setAttempts(newAttempts);
         event.setLastError(error);
@@ -89,6 +117,7 @@ public class WebhookProcessorService {
             event.setProcessedAt(OffsetDateTime.now());
             webhookEventRepository.save(event);
             log.warn("Webhook event {} moved to DLQ after {} attempts", event.getProviderEventId(), newAttempts);
+            webhookDlqCounter.increment();
         } else {
             // Schedule retry with exponential backoff
             int backoffSeconds = BASE_BACKOFF_SECONDS * (1 << (newAttempts - 1));

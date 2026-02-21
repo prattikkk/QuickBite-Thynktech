@@ -31,6 +31,7 @@ import com.quickbite.vendors.entity.MenuItem;
 import com.quickbite.vendors.entity.Vendor;
 import com.quickbite.vendors.repository.MenuItemRepository;
 import com.quickbite.websocket.OrderUpdatePublisher;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -91,7 +92,6 @@ class OrderServiceTest {
     @Mock
     private EventTimelineService eventTimelineService;
 
-    @InjectMocks
     private OrderService orderService;
 
     private UUID customerId;
@@ -108,6 +108,13 @@ class OrderServiceTest {
 
     @BeforeEach
     void setUp() {
+        orderService = new OrderService(
+                orderRepository, menuItemRepository, userRepository,
+                addressRepository, deliveryStatusRepository, paymentService,
+                driverAssignmentService, orderMapper, orderUpdatePublisher,
+                orderStateMachine, eventTimelineService,
+                new SimpleMeterRegistry());
+
         customerId = UUID.randomUUID();
         vendorUserId = UUID.randomUUID();
         vendorEntityId = UUID.randomUUID();
