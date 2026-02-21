@@ -21,6 +21,7 @@ import DriverDashboard from './pages/DriverDashboard';
 import AdminOrderTimeline from './pages/AdminOrderTimeline';
 import AdminHealth from './pages/AdminHealth';
 import Favorites from './pages/Favorites';
+import Profile from './pages/Profile';
 
 function App() {
   const loadFromStorage = useAuthStore((state) => state.loadFromStorage);
@@ -97,6 +98,14 @@ function App() {
               element={
                 <ProtectedRoute requiredRole="CUSTOMER">
                   <MyOrders />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute>
+                  <Profile />
                 </ProtectedRoute>
               }
             />

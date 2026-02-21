@@ -13,3 +13,4 @@ export { default as adminService } from './admin.service';
 export { default as favoriteService } from './favorite.service';
 export { default as notificationService } from './notification.service';
 export { default as promoService } from './promo.service';
+export { default as userService } from './user.service';
