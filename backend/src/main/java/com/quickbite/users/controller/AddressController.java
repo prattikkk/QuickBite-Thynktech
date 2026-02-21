@@ -86,6 +86,39 @@ public class AddressController {
     }
 
     /**
+     * Update an existing address.
+     */
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'DRIVER', 'VENDOR', 'ADMIN')")
+    @Operation(summary = "Update address", description = "Update an existing delivery address")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> updateAddress(
+            @PathVariable UUID id,
+            @RequestBody Map<String, Object> body,
+            Authentication authentication
+    ) {
+        UUID userId = extractUserId(authentication);
+        Address address = addressRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Address not found: " + id));
+
+        if (!address.getUser().getId().equals(userId)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error("Not authorized to update this address", null));
+        }
+
+        if (body.containsKey("line1"))   address.setLine1((String) body.get("line1"));
+        if (body.containsKey("line2"))   address.setLine2((String) body.get("line2"));
+        if (body.containsKey("city"))    address.setCity((String) body.get("city"));
+        if (body.containsKey("state"))   address.setState((String) body.get("state"));
+        if (body.containsKey("postal"))  address.setPostal((String) body.get("postal"));
+        if (body.containsKey("country")) address.setCountry(body.get("country").toString());
+
+        address = addressRepository.save(address);
+        log.info("Address updated: {} for user: {}", id, userId);
+
+        return ResponseEntity.ok(ApiResponse.success("Address updated", toDTO(address)));
+    }
+
+    /**
      * Delete an address.
      */
     @DeleteMapping("/{id}")

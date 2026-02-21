@@ -14,6 +14,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
@@ -22,7 +23,9 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -44,17 +47,14 @@ public class VendorController {
 
     @GetMapping
     @PreAuthorize("hasAnyRole('CUSTOMER', 'VENDOR', 'DRIVER', 'ADMIN')")
-    @Operation(summary = "List vendors", description = "List all active vendors")
-    public ResponseEntity<ApiResponse<List<VendorResponseDTO>>> listVendors(
+    @Operation(summary = "List vendors", description = "List all active vendors (paginated)")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> listVendors(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
         var pageable = PageRequest.of(page, size, Sort.by("name").ascending());
-        var vendors = vendorRepository.findByActiveTrue(pageable)
-                .stream()
-                .map(this::toDTO)
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(ApiResponse.success("Vendors retrieved successfully", vendors));
+        Page<Vendor> vendorPage = vendorRepository.findByActiveTrue(pageable);
+        return ResponseEntity.ok(ApiResponse.success("Vendors retrieved successfully", toPageMap(vendorPage)));
     }
 
     @GetMapping("/{id}")
@@ -68,18 +68,15 @@ public class VendorController {
 
     @GetMapping("/search")
     @PreAuthorize("hasAnyRole('CUSTOMER', 'VENDOR', 'DRIVER', 'ADMIN')")
-    @Operation(summary = "Search vendors", description = "Search vendors by name")
-    public ResponseEntity<ApiResponse<List<VendorResponseDTO>>> searchVendors(
+    @Operation(summary = "Search vendors", description = "Search vendors by name (paginated)")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> searchVendors(
             @RequestParam String query,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
         var pageable = PageRequest.of(page, size, Sort.by("name").ascending());
-        var vendors = vendorRepository.findByNameContainingIgnoreCaseAndActiveTrue(query, pageable)
-                .stream()
-                .map(this::toDTO)
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(ApiResponse.success("Search results retrieved", vendors));
+        Page<Vendor> vendorPage = vendorRepository.findByNameContainingIgnoreCaseAndActiveTrue(query, pageable);
+        return ResponseEntity.ok(ApiResponse.success("Search results retrieved", toPageMap(vendorPage)));
     }
 
     // ── Vendor profile management (VENDOR role only) ────────────────────
@@ -168,6 +165,22 @@ public class VendorController {
     }
 
     // ── Helper ──────────────────────────────────────────────────────────
+
+    /**
+     * Convert a Page of Vendors to a map matching frontend VendorListResponse shape.
+     */
+    private Map<String, Object> toPageMap(Page<Vendor> vendorPage) {
+        List<VendorResponseDTO> content = vendorPage.getContent().stream()
+                .map(this::toDTO)
+                .collect(Collectors.toList());
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("content", content);
+        map.put("page", vendorPage.getNumber());
+        map.put("size", vendorPage.getSize());
+        map.put("totalElements", vendorPage.getTotalElements());
+        map.put("totalPages", vendorPage.getTotalPages());
+        return map;
+    }
 
     private VendorResponseDTO toDTO(Vendor vendor) {
         return VendorResponseDTO.builder()

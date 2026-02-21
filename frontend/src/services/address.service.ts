@@ -25,15 +25,15 @@ export const addressService = {
   /**
    * Update address
    */
-  updateAddress: async (id: number, address: Partial<AddressDTO>): Promise<AddressDTO> => {
-    const response = await api.patch<any, AddressDTO>(`/addresses/${id}`, address);
+  updateAddress: async (id: string, address: Partial<AddressDTO>): Promise<AddressDTO> => {
+    const response = await api.put<any, AddressDTO>(`/addresses/${id}`, address);
     return response;
   },
 
   /**
    * Delete address
    */
-  deleteAddress: async (id: number): Promise<void> => {
+  deleteAddress: async (id: string): Promise<void> => {
     await api.delete(`/addresses/${id}`);
   },
 };

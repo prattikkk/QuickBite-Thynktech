@@ -4,6 +4,7 @@ import com.quickbite.auth.dto.AuthResponse;
 import com.quickbite.auth.dto.LoginRequest;
 import com.quickbite.auth.dto.RefreshRequest;
 import com.quickbite.auth.dto.RegisterRequest;
+import com.quickbite.auth.dto.UserProfileDTO;
 import com.quickbite.auth.service.AuthService;
 import com.quickbite.common.dto.ApiResponse;
 import jakarta.validation.Valid;
@@ -11,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -77,5 +79,18 @@ public class AuthenticationController {
         authService.logout(request.getRefreshToken());
         
         return ResponseEntity.ok(ApiResponse.success("Logout successful", null));
+    }
+
+    /**
+     * Get the currently authenticated user's profile.
+     * GET /api/auth/me
+     */
+    @GetMapping("/me")
+    public ResponseEntity<ApiResponse<UserProfileDTO>> getCurrentUser(Authentication authentication) {
+        log.debug("Get current user request");
+
+        UserProfileDTO profile = authService.getCurrentUserProfile(authentication.getName());
+
+        return ResponseEntity.ok(ApiResponse.success("User profile retrieved", profile));
     }
 }

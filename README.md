@@ -403,19 +403,16 @@ npm run dev -- --port 3000
 
 ## 🚦 Project Status
 
-**Current Phase**: Phase 1 - Setup Complete ✅
-
-See [DAY1_CHECKLIST.md](DAY1_CHECKLIST.md) for setup verification.
+**Current Phase**: Phase 2 — Operations & Observability ✅
 
 ### Roadmap
 
-- [x] Phase 1: Architecture & Scaffolding
-- [ ] Day 2: Core Entities & Repositories
-- [ ] Day 3: Authentication & Authorization
-- [ ] Day 4: Business Logic & Services
-- [ ] Day 5: Frontend Integration
-- [ ] Day 6: Testing & Documentation
-- [ ] Day 7: Deployment & Launch
+- [x] Phase 0: Architecture & Scaffolding + Full-Stack Integration
+- [x] Phase 1: Reliability — Idempotency, State Machine, Webhook Retry/DLQ, Audit Timeline
+- [x] Phase 2: Operations & Observability — Structured Logging, Metrics, Feature Flags, Health Dashboard
+- [ ] Phase 3: Growth Features — Favorites, Reorder, Promo Engine, ETA, Notifications
+- [ ] Phase 4: Intelligence — Vendor Busy Mode, Driver Scoring, Proof of Delivery, Escalation
+- [ ] Phase 5: Security & Support — Token Rotation, Rate Limiting, Risk Checks, Support Console
 
 ## 🤝 Contributing
 

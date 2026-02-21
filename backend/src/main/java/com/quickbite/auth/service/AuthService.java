@@ -4,6 +4,7 @@ import com.quickbite.auth.dto.AuthResponse;
 import com.quickbite.auth.dto.LoginRequest;
 import com.quickbite.auth.dto.RefreshRequest;
 import com.quickbite.auth.dto.RegisterRequest;
+import com.quickbite.auth.dto.UserProfileDTO;
 import com.quickbite.auth.exception.AuthException;
 import com.quickbite.auth.exception.InvalidTokenException;
 import com.quickbite.auth.security.JwtTokenProvider;
@@ -194,6 +195,29 @@ public class AuthService {
                 .email(user.getEmail())
                 .name(user.getName())
                 .role(user.getRole().getName())
+                .build();
+    }
+
+    /**
+     * Get the current user's profile by their principal name (UUID string).
+     *
+     * @param principalName the UUID string from Authentication.getName()
+     * @return user profile DTO
+     */
+    @Transactional(readOnly = true)
+    public UserProfileDTO getCurrentUserProfile(String principalName) {
+        UUID userId = UUID.fromString(principalName);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new AuthException("User not found"));
+
+        return UserProfileDTO.builder()
+                .id(user.getId())
+                .email(user.getEmail())
+                .fullName(user.getName())
+                .phone(user.getPhone())
+                .role(user.getRole().getName())
+                .status(user.getActive() ? "ACTIVE" : "INACTIVE")
+                .createdAt(user.getCreatedAt())
                 .build();
     }
 

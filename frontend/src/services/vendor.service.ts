@@ -21,9 +21,11 @@ export const vendorService = {
   },
 
   getAllVendors: async (): Promise<VendorDTO[]> => {
-    const response = await api.get<any, VendorDTO[]>('/vendors', {
+    const response = await api.get<any, any>('/vendors', {
       params: { page: 0, size: 100 },
     });
+    // Handle both paginated ({content: [...]}) and flat array responses
+    if (response?.content && Array.isArray(response.content)) return response.content;
     return Array.isArray(response) ? response : [];
   },
 

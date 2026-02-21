@@ -47,11 +47,23 @@ export const authService = {
   },
 
   /**
-   * Logout (client-side only for now)
+   * Logout — revoke refresh token on server, then clear local storage.
    */
-  logout: () => {
-    localStorage.removeItem('quickbite_token');
-    localStorage.removeItem('quickbite_auth');
+  logout: async () => {
+    try {
+      const authData = localStorage.getItem('quickbite_auth');
+      if (authData) {
+        const parsed = JSON.parse(authData);
+        if (parsed.refreshToken) {
+          await api.post('/auth/logout', { refreshToken: parsed.refreshToken });
+        }
+      }
+    } catch {
+      // Best-effort: server may be unreachable, proceed with local cleanup
+    } finally {
+      localStorage.removeItem('quickbite_token');
+      localStorage.removeItem('quickbite_auth');
+    }
   },
 };
 

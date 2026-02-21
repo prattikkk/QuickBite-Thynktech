@@ -21,6 +21,7 @@ import org.springframework.web.context.request.WebRequest;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Global exception handler for REST API.
@@ -119,14 +120,26 @@ public class GlobalExceptionHandler {
 
     /**
      * Handle invalid order state transition exceptions.
+     * Returns structured fields matching frontend TransitionError type.
      */
     @ExceptionHandler(InvalidTransitionException.class)
-    public ResponseEntity<ApiResponse<Void>> handleInvalidTransitionException(
+    public ResponseEntity<ApiResponse<Map<String, String>>> handleInvalidTransitionException(
             InvalidTransitionException ex, WebRequest request) {
 
         log.warn("Invalid transition: {}", ex.getMessage());
 
-        ApiResponse<Void> response = ApiResponse.error(ex.getMessage());
+        Map<String, String> details = Map.of(
+                "currentStatus", ex.getCurrentStatus() != null ? ex.getCurrentStatus() : "",
+                "targetStatus", ex.getTargetStatus() != null ? ex.getTargetStatus() : "",
+                "reason", ex.getReason() != null ? ex.getReason() : "Transition not allowed"
+        );
+
+        ApiResponse<Map<String, String>> response = ApiResponse.<Map<String, String>>builder()
+                .success(false)
+                .message(ex.getMessage())
+                .data(details)
+                .build();
+
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 
