@@ -15,6 +15,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -45,6 +47,7 @@ public class MenuItemController {
     @GetMapping("/api/vendors/{vendorId}/menu")
     @PreAuthorize("hasAnyRole('CUSTOMER', 'VENDOR', 'DRIVER', 'ADMIN')")
     @Operation(summary = "Get vendor menu", description = "Get all available menu items for a vendor")
+    @Cacheable(value = "menus", key = "#vendorId + '-' + #includeUnavailable")
     public ResponseEntity<ApiResponse<List<MenuItemResponseDTO>>> getVendorMenu(
             @PathVariable UUID vendorId,
             @RequestParam(defaultValue = "false") boolean includeUnavailable
@@ -77,6 +80,7 @@ public class MenuItemController {
     @PostMapping("/api/vendors/{vendorId}/menu")
     @PreAuthorize("hasAnyRole('VENDOR', 'ADMIN')")
     @Operation(summary = "Create menu item", description = "Add a new menu item to vendor's menu")
+    @CacheEvict(value = "menus", allEntries = true)
     public ResponseEntity<ApiResponse<MenuItemResponseDTO>> createMenuItem(
             @PathVariable UUID vendorId,
             @Valid @RequestBody MenuItemCreateDTO dto,
@@ -113,6 +117,7 @@ public class MenuItemController {
     @PutMapping("/api/menu-items/{id}")
     @PreAuthorize("hasAnyRole('VENDOR', 'ADMIN')")
     @Operation(summary = "Update menu item", description = "Update an existing menu item")
+    @CacheEvict(value = "menus", allEntries = true)
     public ResponseEntity<ApiResponse<MenuItemResponseDTO>> updateMenuItem(
             @PathVariable UUID id,
             @Valid @RequestBody MenuItemCreateDTO dto,
@@ -145,6 +150,7 @@ public class MenuItemController {
     @DeleteMapping("/api/menu-items/{id}")
     @PreAuthorize("hasAnyRole('VENDOR', 'ADMIN')")
     @Operation(summary = "Delete menu item", description = "Remove a menu item from the menu")
+    @CacheEvict(value = "menus", allEntries = true)
     public ResponseEntity<ApiResponse<Void>> deleteMenuItem(
             @PathVariable UUID id,
             Authentication authentication

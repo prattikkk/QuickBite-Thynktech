@@ -213,7 +213,6 @@ class OrderServiceTest {
         when(addressRepository.findById(addressId)).thenReturn(Optional.of(address));
         when(menuItemRepository.findById(menuItemId)).thenReturn(Optional.of(menuItem));
         when(paymentService.createPaymentIntent(any(), anyLong(), eq("INR"))).thenReturn(payment);
-        when(paymentService.authorizePayment(any())).thenReturn(payment);
         when(orderMapper.toResponseDTO(any(Order.class))).thenReturn(new OrderResponseDTO());
 
         ArgumentCaptor<Order> orderCaptor = ArgumentCaptor.forClass(Order.class);
@@ -248,7 +247,7 @@ class OrderServiceTest {
         assertThat(savedItem.getSpecialInstructions()).isEqualTo("No onions");
 
         verify(paymentService).createPaymentIntent(any(), eq(110000L), eq("INR"));
-        verify(paymentService).authorizePayment(any());
+        verify(paymentService, never()).authorizePayment(any()); // CARD payments don't call authorizePayment
         verify(deliveryStatusRepository).save(any(DeliveryStatus.class));
     }
 

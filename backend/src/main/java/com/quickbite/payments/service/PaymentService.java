@@ -20,6 +20,7 @@ import com.stripe.model.Refund;
 import com.stripe.param.PaymentIntentCaptureParams;
 import com.stripe.param.PaymentIntentCreateParams;
 import com.stripe.param.RefundCreateParams;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import lombok.extern.slf4j.Slf4j;
@@ -82,6 +83,7 @@ public class PaymentService {
      * @return PaymentIntentResponse with client secret
      */
     @Transactional
+    @CircuitBreaker(name = "stripe", fallbackMethod = "createPaymentIntentFallback")
     public PaymentIntentResponse createPaymentIntent(PaymentIntentRequest request) {
         log.info("Creating payment intent for order {} with currency {}", request.getOrderId(), request.getCurrency());
 
@@ -339,6 +341,17 @@ public class PaymentService {
     @SuppressWarnings("unused")
     private String createProviderPaymentIntent(Long amountCents, String currency) {
         return "stub_pi_" + UUID.randomUUID().toString();
+    }
+
+    /**
+     * Circuit breaker fallback for payment intent creation.
+     * Returns a degraded response (stub) so the order can still be placed.
+     */
+    @SuppressWarnings("unused")
+    private PaymentIntentResponse createPaymentIntentFallback(PaymentIntentRequest request, Throwable t) {
+        log.error("Payment service circuit breaker OPEN — falling back to stub for order {}: {}", request.getOrderId(), t.getMessage());
+        paymentFailedCounter.increment();
+        throw new RuntimeException("Payment gateway is temporarily unavailable. Please try again shortly.", t);
     }
 
     /**

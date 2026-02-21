@@ -178,17 +178,29 @@ public class AuthService {
         }
 
         // Generate new access token (keep same refresh token)
+        // --- Refresh Token Rotation (Phase 4 — Security) ---
+        // Revoke the old refresh token (one-time use)
+        tokenStore.setRevoked(true);
+        tokenStore.setRevokedAt(OffsetDateTime.now());
+        tokenStoreRepository.save(tokenStore);
+
+        // Generate both a new access token AND a new refresh token
         String accessToken = jwtTokenProvider.generateAccessToken(
                 user.getId(),
                 user.getEmail(),
                 user.getRole().getName()
         );
+        String newRefreshToken = jwtTokenProvider.generateRefreshToken(
+                user.getId(),
+                user.getEmail()
+        );
+        storeRefreshToken(user, newRefreshToken);
 
-        log.info("Access token refreshed for user: {}", user.getEmail());
+        log.info("Token rotation completed for user: {}", user.getEmail());
 
         return AuthResponse.builder()
                 .accessToken(accessToken)
-                .refreshToken(refreshToken)
+                .refreshToken(newRefreshToken)
                 .tokenType("Bearer")
                 .expiresIn(jwtTokenProvider.getAccessTokenExpirationSeconds())
                 .userId(user.getId())

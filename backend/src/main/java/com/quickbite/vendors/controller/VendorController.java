@@ -14,6 +14,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -48,6 +50,7 @@ public class VendorController {
     @GetMapping
     @PreAuthorize("hasAnyRole('CUSTOMER', 'VENDOR', 'DRIVER', 'ADMIN')")
     @Operation(summary = "List vendors", description = "List all active vendors (paginated)")
+    @Cacheable(value = "vendors", key = "#page + '-' + #size")
     public ResponseEntity<ApiResponse<Map<String, Object>>> listVendors(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
@@ -60,6 +63,7 @@ public class VendorController {
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('CUSTOMER', 'VENDOR', 'DRIVER', 'ADMIN')")
     @Operation(summary = "Get vendor", description = "Get vendor details by ID")
+    @Cacheable(value = "vendorById", key = "#id")
     public ResponseEntity<ApiResponse<VendorResponseDTO>> getVendor(@PathVariable UUID id) {
         var vendor = vendorRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Vendor not found: " + id));
@@ -69,6 +73,7 @@ public class VendorController {
     @GetMapping("/search")
     @PreAuthorize("hasAnyRole('CUSTOMER', 'VENDOR', 'DRIVER', 'ADMIN')")
     @Operation(summary = "Search vendors", description = "Search vendors by name (paginated)")
+    @Cacheable(value = "vendorSearch", key = "#query + '-' + #page + '-' + #size")
     public ResponseEntity<ApiResponse<Map<String, Object>>> searchVendors(
             @RequestParam String query,
             @RequestParam(defaultValue = "0") int page,
@@ -104,6 +109,7 @@ public class VendorController {
     @PostMapping
     @PreAuthorize("hasRole('VENDOR')")
     @Operation(summary = "Create vendor profile", description = "Create a new restaurant for the logged-in vendor")
+    @CacheEvict(value = {"vendors", "vendorSearch"}, allEntries = true)
     public ResponseEntity<ApiResponse<VendorResponseDTO>> createVendorProfile(
             @Valid @RequestBody VendorCreateDTO dto,
             Authentication authentication
@@ -142,6 +148,7 @@ public class VendorController {
     @PutMapping("/my")
     @PreAuthorize("hasRole('VENDOR')")
     @Operation(summary = "Update my vendor profile", description = "Update the logged-in vendor's restaurant details")
+    @CacheEvict(value = {"vendors", "vendorById", "vendorSearch"}, allEntries = true)
     public ResponseEntity<ApiResponse<VendorResponseDTO>> updateMyVendorProfile(
             @Valid @RequestBody VendorUpdateDTO dto,
             Authentication authentication
