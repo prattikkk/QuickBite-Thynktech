@@ -11,7 +11,7 @@ import { useToastStore } from '../store';
 import VendorMenuManagement from './VendorMenuManagement';
 import VendorProfile from './VendorProfile';
 
-type Tab = 'orders' | 'menu' | 'profile';
+type Tab = 'orders' | 'kds' | 'menu' | 'profile';
 
 export default function VendorDashboard() {
   const [tab, setTab] = useState<Tab>('orders');
@@ -123,6 +123,7 @@ export default function VendorDashboard() {
 
   const tabs: { key: Tab; label: string; icon: string }[] = [
     { key: 'orders', label: 'Orders', icon: '📋' },
+    { key: 'kds', label: 'Kitchen', icon: '🍳' },
     { key: 'menu', label: 'Menu', icon: '🍽️' },
     { key: 'profile', label: 'Profile', icon: '⚙️' },
   ];
@@ -179,6 +180,22 @@ export default function VendorDashboard() {
             onMarkPreparing={handleMarkPreparing}
             onMarkReady={handleMarkReady}
           />
+        )}
+
+        {tab === 'kds' && vendor && (
+          <KDSView
+            orders={orders}
+            actionLoading={actionLoading}
+            onAccept={handleAccept}
+            onMarkPreparing={handleMarkPreparing}
+            onMarkReady={handleMarkReady}
+          />
+        )}
+
+        {tab === 'kds' && !vendor && (
+          <div className="bg-white rounded-lg shadow-md p-12 text-center">
+            <p className="text-gray-600">Create your restaurant profile first.</p>
+          </div>
         )}
 
         {tab === 'menu' && vendor && <VendorMenuManagement vendor={vendor} />}
@@ -358,6 +375,110 @@ function OrdersTab({
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+// ── KDS (Kitchen Display System) ───────────────────────────────────────
+
+interface KDSViewProps {
+  orders: OrderDTO[];
+  actionLoading: string | null;
+  onAccept: (id: string) => void;
+  onMarkPreparing: (id: string) => void;
+  onMarkReady: (id: string) => void;
+}
+
+function KDSView({ orders, actionLoading, onAccept, onMarkPreparing, onMarkReady }: KDSViewProps) {
+  // Only show active kitchen-relevant orders
+  const activeStatuses = ['PLACED', 'ACCEPTED', 'PREPARING', 'READY'];
+  const kdsOrders = orders.filter((o) => activeStatuses.includes(o.status));
+
+  // Group by status columns
+  const columns: { status: string; label: string; color: string; bg: string }[] = [
+    { status: 'PLACED', label: 'New', color: 'border-yellow-500', bg: 'bg-yellow-50' },
+    { status: 'ACCEPTED', label: 'Accepted', color: 'border-blue-500', bg: 'bg-blue-50' },
+    { status: 'PREPARING', label: 'Preparing', color: 'border-purple-500', bg: 'bg-purple-50' },
+    { status: 'READY', label: 'Ready', color: 'border-green-500', bg: 'bg-green-50' },
+  ];
+
+  if (kdsOrders.length === 0) {
+    return (
+      <div className="bg-white rounded-lg shadow-md p-12 text-center">
+        <div className="text-5xl mb-4">🍳</div>
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">Kitchen is clear</h3>
+        <p className="text-gray-500">Active orders will appear here in real time.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      {columns.map((col) => {
+        const colOrders = kdsOrders.filter((o) => o.status === col.status);
+        return (
+          <div key={col.status}>
+            <h3 className={`text-sm font-bold uppercase tracking-wider mb-3 text-gray-600`}>
+              {col.label}{' '}
+              <span className="text-gray-400">({colOrders.length})</span>
+            </h3>
+            <div className="space-y-3">
+              {colOrders.map((order) => (
+                <div
+                  key={order.id}
+                  className={`rounded-lg shadow p-4 border-l-4 ${col.color} ${col.bg}`}
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <span className="text-lg font-bold">
+                      #{order.orderNumber || order.id.substring(0, 6)}
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      {formatDateTime(order.createdAt)}
+                    </span>
+                  </div>
+                  <ul className="text-sm space-y-1 mb-3">
+                    {order.items.map((item) => (
+                      <li key={item.id} className="font-medium">
+                        {item.quantity}x {item.name}
+                      </li>
+                    ))}
+                  </ul>
+                  {order.status === 'PLACED' && (
+                    <button
+                      onClick={() => onAccept(order.id)}
+                      disabled={actionLoading === order.id}
+                      className="w-full py-1.5 bg-green-600 text-white rounded text-sm font-medium hover:bg-green-700 disabled:opacity-50"
+                    >
+                      Accept
+                    </button>
+                  )}
+                  {order.status === 'ACCEPTED' && (
+                    <button
+                      onClick={() => onMarkPreparing(order.id)}
+                      disabled={actionLoading === order.id}
+                      className="w-full py-1.5 bg-purple-600 text-white rounded text-sm font-medium hover:bg-purple-700 disabled:opacity-50"
+                    >
+                      Start Preparing
+                    </button>
+                  )}
+                  {order.status === 'PREPARING' && (
+                    <button
+                      onClick={() => onMarkReady(order.id)}
+                      disabled={actionLoading === order.id}
+                      className="w-full py-1.5 bg-primary-600 text-white rounded text-sm font-medium hover:bg-primary-700 disabled:opacity-50"
+                    >
+                      Mark Ready
+                    </button>
+                  )}
+                </div>
+              ))}
+              {colOrders.length === 0 && (
+                <p className="text-sm text-gray-400 text-center py-4">—</p>
+              )}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }

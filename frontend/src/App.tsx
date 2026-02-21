@@ -5,7 +5,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { useEffect } from 'react';
 import { useAuthStore } from './store';
-import { Header, Footer, Toast, ProtectedRoute, RoleBasedRedirect } from './components';
+import { Header, Footer, Toast, ProtectedRoute, RoleBasedRedirect, ErrorBoundary } from './components';
 
 // Pages
 import Login from './pages/Login';
@@ -40,6 +40,7 @@ function App() {
         <Toast />
         
         <main className="flex-1">
+          <ErrorBoundary>
           <Routes>
             {/* Public routes */}
             <Route path="/login" element={<Login />} />
@@ -163,6 +164,7 @@ function App() {
             {/* 404 */}
             <Route path="*" element={<NotFound />} />
           </Routes>
+          </ErrorBoundary>
         </main>
 
         <Footer />

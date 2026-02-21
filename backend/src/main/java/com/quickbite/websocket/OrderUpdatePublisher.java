@@ -73,6 +73,62 @@ public class OrderUpdatePublisher {
     }
 
     /**
+     * Publish driver location update to WebSocket subscribers.
+     * Customers watching an order get the driver's real-time GPS.
+     */
+    public void publishDriverLocation(UUID driverId, double lat, double lng, UUID orderId) {
+        try {
+            var payload = new java.util.LinkedHashMap<String, Object>();
+            payload.put("driverId", driverId);
+            payload.put("lat", lat);
+            payload.put("lng", lng);
+            payload.put("timestamp", OffsetDateTime.now().toString());
+
+            // Broadcast to driver-specific topic
+            String driverDest = "/topic/drivers." + driverId + ".location";
+            messagingTemplate.convertAndSend(driverDest, payload);
+
+            // Also broadcast to order topic so customer's OrderTrack gets location
+            if (orderId != null) {
+                String orderDest = "/topic/orders." + orderId + ".location";
+                messagingTemplate.convertAndSend(orderDest, payload);
+            }
+
+            log.debug("Published driver {} location: lat={}, lng={}", driverId, lat, lng);
+        } catch (Exception e) {
+            log.error("Failed to publish driver location for driver {}", driverId, e);
+        }
+    }
+
+    /**
+     * Publish new order event to vendor's WebSocket topic (for KDS / live order feed).
+     */
+    public void publishVendorOrderUpdate(UUID vendorId, Order order) {
+        try {
+            OrderUpdateDTO update = mapToDTO(order);
+            String destination = "/topic/vendors." + vendorId + ".orders";
+            messagingTemplate.convertAndSend(destination, update);
+            log.debug("Published vendor order update to {}: orderId={}", destination, order.getId());
+        } catch (Exception e) {
+            log.error("Failed to publish vendor order update for vendor {}", vendorId, e);
+        }
+    }
+
+    /**
+     * Publish new order assignment push to a driver's topic.
+     */
+    public void publishDriverOrderAssignment(UUID driverId, Order order) {
+        try {
+            OrderUpdateDTO update = mapToDTO(order);
+            String destination = "/topic/drivers." + driverId;
+            messagingTemplate.convertAndSend(destination, update);
+            log.debug("Published driver order assignment to {}: orderId={}", destination, order.getId());
+        } catch (Exception e) {
+            log.error("Failed to publish driver assignment for driver {}", driverId, e);
+        }
+    }
+
+    /**
      * Map Order entity to DTO for WebSocket transmission.
      */
     private OrderUpdateDTO mapToDTO(Order order) {

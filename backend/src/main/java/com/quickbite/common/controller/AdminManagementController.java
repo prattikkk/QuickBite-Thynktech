@@ -1,5 +1,6 @@
 package com.quickbite.common.controller;
 
+import com.quickbite.audit.service.AuditService;
 import com.quickbite.common.dto.ApiResponse;
 import com.quickbite.users.entity.User;
 import com.quickbite.users.repository.UserRepository;
@@ -15,6 +16,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,6 +37,7 @@ public class AdminManagementController {
 
     private final UserRepository userRepository;
     private final VendorRepository vendorRepository;
+    private final AuditService auditService;
 
     // ── Users ────────────────────────────────────────────────────────
 
@@ -77,7 +80,8 @@ public class AdminManagementController {
     @Transactional
     public ResponseEntity<ApiResponse<Map<String, Object>>> updateUserStatus(
             @PathVariable UUID userId,
-            @RequestParam boolean active) {
+            @RequestParam boolean active,
+            Authentication authentication) {
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
@@ -93,6 +97,11 @@ public class AdminManagementController {
 
         String action = active ? "activated" : "banned";
         log.info("Admin {} user {}: {}", action, userId, user.getEmail());
+
+        // Audit trail
+        auditService.recordAction(UUID.fromString(authentication.getName()),
+                active ? "ACTIVATE_USER" : "BAN_USER", "User", userId,
+                Map.of("active", !active), Map.of("active", active));
 
         return ResponseEntity.ok(ApiResponse.success("User " + action, userSummary(user)));
     }
@@ -129,16 +138,23 @@ public class AdminManagementController {
     @Transactional
     public ResponseEntity<ApiResponse<Map<String, Object>>> approveVendor(
             @PathVariable UUID vendorId,
-            @RequestParam boolean active) {
+            @RequestParam boolean active,
+            Authentication authentication) {
 
         Vendor vendor = vendorRepository.findById(vendorId)
                 .orElseThrow(() -> new RuntimeException("Vendor not found"));
 
+        boolean oldActive = Boolean.TRUE.equals(vendor.getActive());
         vendor.setActive(active);
         vendorRepository.save(vendor);
 
         String action = active ? "approved" : "deactivated";
         log.info("Admin {} vendor {}: {}", action, vendorId, vendor.getName());
+
+        // Audit trail
+        auditService.recordAction(UUID.fromString(authentication.getName()),
+                active ? "APPROVE_VENDOR" : "DEACTIVATE_VENDOR", "Vendor", vendorId,
+                Map.of("active", oldActive), Map.of("active", active));
 
         return ResponseEntity.ok(ApiResponse.success("Vendor " + action, vendorSummary(vendor)));
     }

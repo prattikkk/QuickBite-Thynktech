@@ -22,6 +22,20 @@ export interface DriverOrderSummary {
   createdAt: string;
 }
 
+export interface DriverProfileDTO {
+  id: string;
+  userId: string;
+  name: string;
+  email: string;
+  vehicleType: string;
+  licensePlate: string | null;
+  isOnline: boolean;
+  currentLat: number | null;
+  currentLng: number | null;
+  totalDeliveries: number;
+  successRate: number;
+}
+
 export const driverService = {
   /**
    * Get assigned orders for driver (generic endpoint, filtered by role)
@@ -104,6 +118,35 @@ export const driverService = {
     const response = await api.patch<any, OrderDTO>(`/orders/${orderId}/status`, {
       status: 'DELIVERED',
     });
+    return response;
+  },
+
+  // ── Profile & Status ──────────────────────────────────
+
+  /**
+   * Get the driver's profile (vehicle info, stats, online status).
+   */
+  getProfile: async (): Promise<DriverProfileDTO> => {
+    const response = await api.get<any, DriverProfileDTO>('/drivers/profile');
+    return response;
+  },
+
+  /**
+   * Update driver profile (vehicle type, license plate).
+   */
+  updateProfile: async (vehicleType: string, licensePlate: string): Promise<DriverProfileDTO> => {
+    const response = await api.put<any, DriverProfileDTO>('/drivers/profile', {
+      vehicleType,
+      licensePlate,
+    });
+    return response;
+  },
+
+  /**
+   * Toggle driver online/offline status.
+   */
+  toggleStatus: async (online: boolean): Promise<DriverProfileDTO> => {
+    const response = await api.put<any, DriverProfileDTO>('/drivers/status', { online });
     return response;
   },
 };

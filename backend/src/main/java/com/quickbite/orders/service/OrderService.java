@@ -277,6 +277,11 @@ public class OrderService {
         // 10. Publish real-time update
         orderUpdatePublisher.publishOrderUpdate(order);
 
+        // 10b. Notify vendor via WebSocket (for KDS / vendor dashboard live feed)
+        if (order.getVendor() != null) {
+            orderUpdatePublisher.publishVendorOrderUpdate(order.getVendor().getId(), order);
+        }
+
         orderCreatedCounter.increment();
         return orderMapper.toResponseDTO(order);
     }
@@ -410,6 +415,11 @@ public class OrderService {
 
         // Publish real-time update
         orderUpdatePublisher.publishOrderUpdate(order);
+
+        // Broadcast to vendor's KDS topic whenever an order changes
+        if (order.getVendor() != null) {
+            orderUpdatePublisher.publishVendorOrderUpdate(order.getVendor().getId(), order);
+        }
 
         orderTransitionCounter.increment();
         return orderMapper.toResponseDTO(order);
@@ -637,6 +647,8 @@ public class OrderService {
         }
 
         orderUpdatePublisher.publishOrderUpdate(order);
+        // Notify the driver about the new assignment via WebSocket
+        orderUpdatePublisher.publishDriverOrderAssignment(driverId, order);
         return orderMapper.toResponseDTO(order);
     }
 }

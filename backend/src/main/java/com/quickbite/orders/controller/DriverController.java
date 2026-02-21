@@ -3,11 +3,14 @@ package com.quickbite.orders.controller;
 import com.quickbite.common.dto.ApiResponse;
 import com.quickbite.delivery.entity.DeliveryStatus;
 import com.quickbite.delivery.repository.DeliveryStatusRepository;
+import com.quickbite.orders.driver.DriverProfileDTO;
+import com.quickbite.orders.driver.DriverProfileService;
 import com.quickbite.orders.dto.OrderResponseDTO;
 import com.quickbite.orders.entity.Order;
 import com.quickbite.orders.entity.OrderStatus;
 import com.quickbite.orders.repository.OrderRepository;
 import com.quickbite.orders.service.OrderService;
+import com.quickbite.websocket.OrderUpdatePublisher;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -39,6 +42,8 @@ public class DriverController {
     private final OrderRepository orderRepository;
     private final OrderService orderService;
     private final DeliveryStatusRepository deliveryStatusRepository;
+    private final DriverProfileService driverProfileService;
+    private final OrderUpdatePublisher orderUpdatePublisher;
 
     /**
      * Get available (unassigned) READY orders a driver can pick up.
@@ -119,8 +124,13 @@ public class DriverController {
                 .flatMap(s -> orderRepository.findByDriverIdAndStatus(driverId, s).stream())
                 .findFirst();
 
+        // Always update driver profile GPS (trackable when online)
+        if (dto.getLat() != null && dto.getLng() != null) {
+            driverProfileService.updateLocation(driverId, dto.getLat(), dto.getLng());
+        }
+
         if (activeOrder.isEmpty()) {
-            return ResponseEntity.ok(ApiResponse.success("No active delivery to update location for", null));
+            return ResponseEntity.ok(ApiResponse.success("Location updated (no active delivery)", null));
         }
 
         // Record a location-only delivery status entry
@@ -133,6 +143,12 @@ public class DriverController {
                 .locationLng(dto.getLng() != null ? BigDecimal.valueOf(dto.getLng()) : null)
                 .build();
         deliveryStatusRepository.save(loc);
+
+        // Broadcast location to WebSocket subscribers
+        if (dto.getLat() != null && dto.getLng() != null) {
+            orderUpdatePublisher.publishDriverLocation(driverId, dto.getLat(), dto.getLng(),
+                    activeOrder.get().getId());
+        }
 
         return ResponseEntity.ok(ApiResponse.success("Location updated", null));
     }
@@ -168,6 +184,48 @@ public class DriverController {
         return ResponseEntity.ok(ApiResponse.success("Delivery history", list));
     }
 
+    // ── Profile endpoints ────────────────────────────────────────────
+
+    /**
+     * Get the current driver's profile (vehicle, stats, online status).
+     */
+    @GetMapping("/profile")
+    @PreAuthorize("hasRole('DRIVER')")
+    @Operation(summary = "Get driver profile", description = "Get vehicle info, stats, online/offline status")
+    public ResponseEntity<ApiResponse<DriverProfileDTO>> getProfile(Authentication auth) {
+        UUID driverId = extractUserId(auth);
+        DriverProfileDTO profile = driverProfileService.getProfileDTO(driverId);
+        return ResponseEntity.ok(ApiResponse.success("Driver profile", profile));
+    }
+
+    /**
+     * Update driver profile (vehicle type, license plate).
+     */
+    @PutMapping("/profile")
+    @PreAuthorize("hasRole('DRIVER')")
+    @Operation(summary = "Update driver profile", description = "Update vehicle type and license plate")
+    public ResponseEntity<ApiResponse<DriverProfileDTO>> updateProfile(
+            @RequestBody ProfileUpdateDTO dto, Authentication auth) {
+        UUID driverId = extractUserId(auth);
+        DriverProfileDTO profile = driverProfileService.updateProfile(
+                driverId, dto.getVehicleType(), dto.getLicensePlate());
+        return ResponseEntity.ok(ApiResponse.success("Profile updated", profile));
+    }
+
+    /**
+     * Toggle driver online/offline status.
+     */
+    @PutMapping("/status")
+    @PreAuthorize("hasRole('DRIVER')")
+    @Operation(summary = "Toggle online status", description = "Set driver online or offline for receiving orders")
+    public ResponseEntity<ApiResponse<DriverProfileDTO>> toggleStatus(
+            @RequestBody StatusUpdateRequest dto, Authentication auth) {
+        UUID driverId = extractUserId(auth);
+        DriverProfileDTO profile = driverProfileService.toggleOnlineStatus(driverId, dto.isOnline());
+        return ResponseEntity.ok(ApiResponse.success(
+                dto.isOnline() ? "You are now online" : "You are now offline", profile));
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────
 
     private Map<String, Object> orderSummary(Order o) {
@@ -200,5 +258,16 @@ public class DriverController {
     public static class LocationUpdateDTO {
         private Double lat;
         private Double lng;
+    }
+
+    @Data
+    public static class ProfileUpdateDTO {
+        private String vehicleType;
+        private String licensePlate;
+    }
+
+    @Data
+    public static class StatusUpdateRequest {
+        private boolean online;
     }
 }

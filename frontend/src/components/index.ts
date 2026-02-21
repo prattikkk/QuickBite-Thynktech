@@ -12,3 +12,4 @@ export { default as CartWidget } from './CartWidget';
 export { default as RoleBasedRedirect } from './RoleBasedRedirect';
 export { default as FavoriteButton } from './FavoriteButton';
 export { default as NotificationBell } from './NotificationBell';
+export { default as ErrorBoundary } from './ErrorBoundary';
