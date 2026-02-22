@@ -9,14 +9,13 @@ import com.quickbite.vendors.entity.MenuItem;
 import com.quickbite.vendors.entity.Vendor;
 import com.quickbite.vendors.repository.MenuItemRepository;
 import com.quickbite.vendors.repository.VendorRepository;
+import com.quickbite.vendors.service.MenuItemCacheService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -25,7 +24,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 /**
  * REST controller for menu item management.
@@ -40,6 +38,7 @@ public class MenuItemController {
     private final MenuItemRepository menuItemRepository;
     private final VendorRepository vendorRepository;
     private final UserRepository userRepository;
+    private final MenuItemCacheService menuItemCacheService;
 
     /**
      * Get all menu items for a vendor.
@@ -47,19 +46,13 @@ public class MenuItemController {
     @GetMapping("/api/vendors/{vendorId}/menu")
     @PreAuthorize("hasAnyRole('CUSTOMER', 'VENDOR', 'DRIVER', 'ADMIN')")
     @Operation(summary = "Get vendor menu", description = "Get all available menu items for a vendor")
-    @Cacheable(value = "menus", key = "#vendorId + '-' + #includeUnavailable")
     public ResponseEntity<ApiResponse<List<MenuItemResponseDTO>>> getVendorMenu(
             @PathVariable UUID vendorId,
             @RequestParam(defaultValue = "false") boolean includeUnavailable
     ) {
         log.debug("Getting menu for vendor: {}", vendorId);
-
-        List<MenuItem> items = includeUnavailable
-                ? menuItemRepository.findByVendorId(vendorId)
-                : menuItemRepository.findByVendorIdAndAvailableTrue(vendorId);
-
-        var dtos = items.stream().map(this::toDTO).collect(Collectors.toList());
-        return ResponseEntity.ok(ApiResponse.success("Menu retrieved successfully", dtos));
+        return ResponseEntity.ok(ApiResponse.success("Menu retrieved successfully",
+                menuItemCacheService.getVendorMenu(vendorId, includeUnavailable)));
     }
 
     /**
@@ -71,7 +64,7 @@ public class MenuItemController {
     public ResponseEntity<ApiResponse<MenuItemResponseDTO>> getMenuItem(@PathVariable UUID id) {
         var item = menuItemRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Menu item not found: " + id));
-        return ResponseEntity.ok(ApiResponse.success("Menu item retrieved", toDTO(item)));
+        return ResponseEntity.ok(ApiResponse.success("Menu item retrieved", menuItemCacheService.toDTO(item)));
     }
 
     /**
@@ -80,7 +73,6 @@ public class MenuItemController {
     @PostMapping("/api/vendors/{vendorId}/menu")
     @PreAuthorize("hasAnyRole('VENDOR', 'ADMIN')")
     @Operation(summary = "Create menu item", description = "Add a new menu item to vendor's menu")
-    @CacheEvict(value = "menus", allEntries = true)
     public ResponseEntity<ApiResponse<MenuItemResponseDTO>> createMenuItem(
             @PathVariable UUID vendorId,
             @Valid @RequestBody MenuItemCreateDTO dto,
@@ -106,9 +98,10 @@ public class MenuItemController {
                 .build();
 
         item = menuItemRepository.save(item);
+        menuItemCacheService.evictMenuCaches();
 
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success("Menu item created successfully", toDTO(item)));
+                .body(ApiResponse.success("Menu item created successfully", menuItemCacheService.toDTO(item)));
     }
 
     /**
@@ -117,7 +110,6 @@ public class MenuItemController {
     @PutMapping("/api/menu-items/{id}")
     @PreAuthorize("hasAnyRole('VENDOR', 'ADMIN')")
     @Operation(summary = "Update menu item", description = "Update an existing menu item")
-    @CacheEvict(value = "menus", allEntries = true)
     public ResponseEntity<ApiResponse<MenuItemResponseDTO>> updateMenuItem(
             @PathVariable UUID id,
             @Valid @RequestBody MenuItemCreateDTO dto,
@@ -140,8 +132,9 @@ public class MenuItemController {
         if (dto.getImageUrl() != null) item.setImageUrl(dto.getImageUrl());
 
         item = menuItemRepository.save(item);
+        menuItemCacheService.evictMenuCaches();
 
-        return ResponseEntity.ok(ApiResponse.success("Menu item updated successfully", toDTO(item)));
+        return ResponseEntity.ok(ApiResponse.success("Menu item updated successfully", menuItemCacheService.toDTO(item)));
     }
 
     /**
@@ -150,7 +143,6 @@ public class MenuItemController {
     @DeleteMapping("/api/menu-items/{id}")
     @PreAuthorize("hasAnyRole('VENDOR', 'ADMIN')")
     @Operation(summary = "Delete menu item", description = "Remove a menu item from the menu")
-    @CacheEvict(value = "menus", allEntries = true)
     public ResponseEntity<ApiResponse<Void>> deleteMenuItem(
             @PathVariable UUID id,
             Authentication authentication
@@ -164,6 +156,7 @@ public class MenuItemController {
         validateOwnership(item.getVendor(), authentication);
 
         menuItemRepository.deleteById(id);
+        menuItemCacheService.evictMenuCaches();
         return ResponseEntity.ok(ApiResponse.success("Menu item deleted successfully", null));
     }
 
@@ -177,22 +170,5 @@ public class MenuItemController {
         if (!isAdmin && (vendor.getUser() == null || !vendor.getUser().getId().equals(userId))) {
             throw new RuntimeException("You do not own this restaurant");
         }
-    }
-
-    private MenuItemResponseDTO toDTO(MenuItem item) {
-        return MenuItemResponseDTO.builder()
-                .id(item.getId())
-                .vendorId(item.getVendor() != null ? item.getVendor().getId() : null)
-                .name(item.getName())
-                .description(item.getDescription())
-                .priceCents(item.getPriceCents())
-                .price(item.getPriceCents() != null ? item.getPriceCents() / 100.0 : null)
-                .available(item.getAvailable())
-                .prepTimeMins(item.getPrepTimeMins())
-                .category(item.getCategory())
-                .imageUrl(item.getImageUrl())
-                .createdAt(item.getCreatedAt())
-                .updatedAt(item.getUpdatedAt())
-                .build();
     }
 }

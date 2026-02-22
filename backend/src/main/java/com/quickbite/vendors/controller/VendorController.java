@@ -8,28 +8,21 @@ import com.quickbite.vendors.dto.VendorResponseDTO;
 import com.quickbite.vendors.dto.VendorUpdateDTO;
 import com.quickbite.vendors.entity.Vendor;
 import com.quickbite.vendors.repository.VendorRepository;
+import com.quickbite.vendors.service.VendorCacheService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 /**
  * REST controller for vendor browsing + vendor profile management.
@@ -44,44 +37,39 @@ public class VendorController {
 
     private final VendorRepository vendorRepository;
     private final UserRepository userRepository;
+    private final VendorCacheService vendorCacheService;
 
     // ── Browse (all authenticated users) ────────────────────────────────
 
     @GetMapping
     @PreAuthorize("hasAnyRole('CUSTOMER', 'VENDOR', 'DRIVER', 'ADMIN')")
     @Operation(summary = "List vendors", description = "List all active vendors (paginated)")
-    @Cacheable(value = "vendors", key = "#page + '-' + #size")
     public ResponseEntity<ApiResponse<Map<String, Object>>> listVendors(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
-        var pageable = PageRequest.of(page, size, Sort.by("name").ascending());
-        Page<Vendor> vendorPage = vendorRepository.findByActiveTrue(pageable);
-        return ResponseEntity.ok(ApiResponse.success("Vendors retrieved successfully", toPageMap(vendorPage)));
+        return ResponseEntity.ok(ApiResponse.success("Vendors retrieved successfully",
+                vendorCacheService.listActiveVendors(page, size)));
     }
 
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('CUSTOMER', 'VENDOR', 'DRIVER', 'ADMIN')")
     @Operation(summary = "Get vendor", description = "Get vendor details by ID")
-    @Cacheable(value = "vendorById", key = "#id")
     public ResponseEntity<ApiResponse<VendorResponseDTO>> getVendor(@PathVariable UUID id) {
-        var vendor = vendorRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Vendor not found: " + id));
-        return ResponseEntity.ok(ApiResponse.success("Vendor retrieved successfully", toDTO(vendor)));
+        return ResponseEntity.ok(ApiResponse.success("Vendor retrieved successfully",
+                vendorCacheService.getVendorById(id)));
     }
 
     @GetMapping("/search")
     @PreAuthorize("hasAnyRole('CUSTOMER', 'VENDOR', 'DRIVER', 'ADMIN')")
     @Operation(summary = "Search vendors", description = "Search vendors by name (paginated)")
-    @Cacheable(value = "vendorSearch", key = "#query + '-' + #page + '-' + #size")
     public ResponseEntity<ApiResponse<Map<String, Object>>> searchVendors(
             @RequestParam String query,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
-        var pageable = PageRequest.of(page, size, Sort.by("name").ascending());
-        Page<Vendor> vendorPage = vendorRepository.findByNameContainingIgnoreCaseAndActiveTrue(query, pageable);
-        return ResponseEntity.ok(ApiResponse.success("Search results retrieved", toPageMap(vendorPage)));
+        return ResponseEntity.ok(ApiResponse.success("Search results retrieved",
+                vendorCacheService.searchVendors(query, page, size)));
     }
 
     // ── Vendor profile management (VENDOR role only) ────────────────────
@@ -99,7 +87,7 @@ public class VendorController {
         if (vendor == null) {
             return ResponseEntity.ok(ApiResponse.success("No vendor profile yet", null));
         }
-        return ResponseEntity.ok(ApiResponse.success("Vendor profile retrieved", toDTO(vendor)));
+        return ResponseEntity.ok(ApiResponse.success("Vendor profile retrieved", vendorCacheService.toDTO(vendor)));
     }
 
     /**
@@ -109,7 +97,6 @@ public class VendorController {
     @PostMapping
     @PreAuthorize("hasRole('VENDOR')")
     @Operation(summary = "Create vendor profile", description = "Create a new restaurant for the logged-in vendor")
-    @CacheEvict(value = {"vendors", "vendorSearch"}, allEntries = true)
     public ResponseEntity<ApiResponse<VendorResponseDTO>> createVendorProfile(
             @Valid @RequestBody VendorCreateDTO dto,
             Authentication authentication
@@ -137,9 +124,10 @@ public class VendorController {
 
         vendor = vendorRepository.save(vendor);
         log.info("Vendor profile created: {} for user {}", vendor.getId(), userId);
+        vendorCacheService.evictVendorListCaches();
 
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success("Restaurant created successfully", toDTO(vendor)));
+                .body(ApiResponse.success("Restaurant created successfully", vendorCacheService.toDTO(vendor)));
     }
 
     /**
@@ -148,7 +136,6 @@ public class VendorController {
     @PutMapping("/my")
     @PreAuthorize("hasRole('VENDOR')")
     @Operation(summary = "Update my vendor profile", description = "Update the logged-in vendor's restaurant details")
-    @CacheEvict(value = {"vendors", "vendorById", "vendorSearch"}, allEntries = true)
     public ResponseEntity<ApiResponse<VendorResponseDTO>> updateMyVendorProfile(
             @Valid @RequestBody VendorUpdateDTO dto,
             Authentication authentication
@@ -167,43 +154,8 @@ public class VendorController {
 
         vendor = vendorRepository.save(vendor);
         log.info("Vendor profile updated: {} for user {}", vendor.getId(), userId);
+        vendorCacheService.evictAllVendorCaches();
 
-        return ResponseEntity.ok(ApiResponse.success("Restaurant updated successfully", toDTO(vendor)));
-    }
-
-    // ── Helper ──────────────────────────────────────────────────────────
-
-    /**
-     * Convert a Page of Vendors to a map matching frontend VendorListResponse shape.
-     */
-    private Map<String, Object> toPageMap(Page<Vendor> vendorPage) {
-        List<VendorResponseDTO> content = vendorPage.getContent().stream()
-                .map(this::toDTO)
-                .collect(Collectors.toList());
-        Map<String, Object> map = new LinkedHashMap<>();
-        map.put("content", content);
-        map.put("page", vendorPage.getNumber());
-        map.put("size", vendorPage.getSize());
-        map.put("totalElements", vendorPage.getTotalElements());
-        map.put("totalPages", vendorPage.getTotalPages());
-        return map;
-    }
-
-    private VendorResponseDTO toDTO(Vendor vendor) {
-        return VendorResponseDTO.builder()
-                .id(vendor.getId())
-                .userId(vendor.getUser() != null ? vendor.getUser().getId() : null)
-                .name(vendor.getName())
-                .description(vendor.getDescription())
-                .address(vendor.getAddress())
-                .lat(vendor.getLat())
-                .lng(vendor.getLng())
-                .openHours(vendor.getOpenHours())
-                .rating(vendor.getRating())
-                .active(vendor.getActive())
-                .menuItemCount(vendor.getMenuItems() != null ? vendor.getMenuItems().size() : 0)
-                .createdAt(vendor.getCreatedAt())
-                .updatedAt(vendor.getUpdatedAt())
-                .build();
+        return ResponseEntity.ok(ApiResponse.success("Restaurant updated successfully", vendorCacheService.toDTO(vendor)));
     }
 }

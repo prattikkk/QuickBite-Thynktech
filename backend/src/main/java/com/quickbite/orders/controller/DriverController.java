@@ -244,7 +244,7 @@ public class DriverController {
             addr.put("postal", o.getDeliveryAddress().getPostal());
             m.put("deliveryAddress", addr);
         }
-        m.put("createdAt", o.getCreatedAt());
+        m.put("createdAt", o.getCreatedAt() != null ? o.getCreatedAt().toString() : null);
         return m;
     }
 
