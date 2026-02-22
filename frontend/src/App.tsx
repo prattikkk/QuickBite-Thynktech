@@ -5,7 +5,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { useEffect } from 'react';
 import { useAuthStore } from './store';
-import { Header, Footer, Toast, ProtectedRoute, RoleBasedRedirect, ErrorBoundary } from './components';
+import { Header, Footer, Toast, ProtectedRoute, RoleBasedRedirect, ErrorBoundary, PWAInstallPrompt, OfflineBanner } from './components';
 
 // Pages
 import Login from './pages/Login';
@@ -36,6 +36,7 @@ function App() {
   return (
     <BrowserRouter>
       <div className="min-h-screen bg-gray-50 flex flex-col">
+        <OfflineBanner />
         <Header />
         <Toast />
         
@@ -168,6 +169,7 @@ function App() {
         </main>
 
         <Footer />
+        <PWAInstallPrompt />
       </div>
     </BrowserRouter>
   );

@@ -15,3 +15,5 @@ export { default as NotificationBell } from './NotificationBell';
 export { default as ErrorBoundary } from './ErrorBoundary';
 export { default as ProofCaptureModal } from './ProofCaptureModal';
 export { default as DeliveryProofDisplay } from './DeliveryProofDisplay';
+export { default as PWAInstallPrompt } from './PWAInstallPrompt';
+export { default as OfflineBanner } from './OfflineBanner';
