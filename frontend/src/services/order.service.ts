@@ -10,6 +10,7 @@ import {
   OrderStatusUpdateRequest,
   PageRequest,
   TimelineEntry,
+  DeliveryProofDTO,
 } from '../types';
 
 export const orderService = {
@@ -113,6 +114,15 @@ export const orderService = {
    */
   reorder: async (orderId: string): Promise<OrderDTO> => {
     const response = await api.post<any, OrderDTO>(`/orders/${orderId}/reorder`);
+    return response;
+  },
+
+  /**
+   * Get delivery proof for an order (Phase 3).
+   * GET /orders/:orderId/proof
+   */
+  getDeliveryProof: async (orderId: string): Promise<DeliveryProofDTO | null> => {
+    const response = await api.get<any, DeliveryProofDTO | null>(`/orders/${orderId}/proof`);
     return response;
   },
 };

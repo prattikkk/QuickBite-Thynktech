@@ -4,7 +4,7 @@
  */
 
 import api from './api';
-import { OrderListResponse, OrderDTO, PageRequest } from '../types';
+import { OrderListResponse, OrderDTO, PageRequest, DeliveryProofDTO } from '../types';
 
 export interface DriverOrderSummary {
   orderId: string;
@@ -190,6 +190,68 @@ export const driverService = {
    */
   toggleStatus: async (online: boolean): Promise<DriverProfileDTO> => {
     const response = await api.put<any, DriverProfileDTO>('/drivers/status', { online });
+    return response;
+  },
+
+  // ── Proof-of-Delivery (Phase 3) ──────────────────────
+
+  /**
+   * Submit photo proof of delivery.
+   * Sends multipart/form-data with photo + optional metadata.
+   */
+  submitPhotoProof: async (
+    orderId: string,
+    photo: File,
+    notes?: string,
+    lat?: number,
+    lng?: number,
+  ): Promise<DeliveryProofDTO> => {
+    const formData = new FormData();
+    formData.append('photo', photo);
+    if (notes) formData.append('notes', notes);
+    if (lat != null) formData.append('lat', String(lat));
+    if (lng != null) formData.append('lng', String(lng));
+
+    const response = await api.post<any, DeliveryProofDTO>(
+      `/orders/${orderId}/proof/photo`,
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } },
+    );
+    return response;
+  },
+
+  /**
+   * Generate OTP for delivery confirmation.
+   */
+  generateOtp: async (orderId: string): Promise<DeliveryProofDTO> => {
+    const response = await api.post<any, DeliveryProofDTO>(`/orders/${orderId}/proof/otp/generate`);
+    return response;
+  },
+
+  /**
+   * Verify delivery OTP.
+   */
+  verifyOtp: async (orderId: string, code: string): Promise<DeliveryProofDTO> => {
+    const response = await api.post<any, DeliveryProofDTO>(
+      `/orders/${orderId}/proof/otp/verify`,
+      { code },
+    );
+    return response;
+  },
+
+  /**
+   * Check if proof is required before marking delivered.
+   */
+  isProofRequired: async (orderId: string): Promise<boolean> => {
+    const response = await api.get<any, boolean>(`/orders/${orderId}/proof/required`);
+    return response;
+  },
+
+  /**
+   * Get existing delivery proof for an order.
+   */
+  getDeliveryProof: async (orderId: string): Promise<DeliveryProofDTO | null> => {
+    const response = await api.get<any, DeliveryProofDTO | null>(`/orders/${orderId}/proof`);
     return response;
   },
 };

@@ -73,7 +73,7 @@ export default function NotificationBell() {
       }
     }
     // Navigate to referenced item if applicable
-    if (n.refId && n.type === 'ORDER_UPDATE') {
+    if (n.refId && (n.type === 'ORDER_UPDATE' || n.type === 'DELIVERY_PROOF' || n.type === 'DELIVERY_CONFIRMED' || n.type === 'DRIVER_ASSIGNED')) {
       navigate(`/orders/${n.refId}`);
       setOpen(false);
     }

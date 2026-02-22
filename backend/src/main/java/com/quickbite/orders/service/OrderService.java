@@ -421,6 +421,9 @@ public class OrderService {
             orderUpdatePublisher.publishVendorOrderUpdate(order.getVendor().getId(), order);
         }
 
+        // ── Phase 3: Send notification to customer on major status transitions ──
+        sendStatusChangeNotification(order, oldStatus, newStatus);
+
         orderTransitionCounter.increment();
         return orderMapper.toResponseDTO(order);
     }
@@ -454,6 +457,9 @@ public class OrderService {
 
         // Publish real-time update
         orderUpdatePublisher.publishOrderUpdate(order);
+
+        // Notify customer
+        sendStatusChangeNotification(order, OrderStatus.PLACED, OrderStatus.ACCEPTED);
 
         return orderMapper.toResponseDTO(order);
     }
@@ -650,5 +656,80 @@ public class OrderService {
         // Notify the driver about the new assignment via WebSocket
         orderUpdatePublisher.publishDriverOrderAssignment(driverId, order);
         return orderMapper.toResponseDTO(order);
+    }
+
+    // ── Phase 3: Notification helper for status transitions ──────────────
+
+    /**
+     * Send in-app notification to customer (and driver where applicable) on status change.
+     */
+    private void sendStatusChangeNotification(Order order, OrderStatus oldStatus, OrderStatus newStatus) {
+        try {
+            UUID customerId = order.getCustomer().getId();
+            UUID orderId = order.getId();
+            String orderNum = order.getOrderNumber() != null ? order.getOrderNumber() : orderId.toString().substring(0, 8);
+
+            String title;
+            String message;
+
+            switch (newStatus) {
+                case ACCEPTED -> {
+                    title = "Order Accepted";
+                    message = "Your order #" + orderNum + " has been accepted by the restaurant.";
+                }
+                case PREPARING -> {
+                    title = "Preparing Your Order";
+                    message = "Your order #" + orderNum + " is being prepared.";
+                }
+                case READY -> {
+                    title = "Order Ready";
+                    message = "Your order #" + orderNum + " is ready for pickup!";
+                }
+                case ASSIGNED -> {
+                    title = "Driver Assigned";
+                    message = "A driver has been assigned to deliver your order #" + orderNum + ".";
+                    // Also notify the driver
+                    if (order.getDriver() != null) {
+                        notificationService.createNotification(
+                                order.getDriver().getId(),
+                                NotificationType.DRIVER_ASSIGNED,
+                                "New Delivery Assignment",
+                                "You have been assigned order #" + orderNum + ".",
+                                orderId
+                        );
+                    }
+                }
+                case PICKED_UP -> {
+                    title = "Order Picked Up";
+                    message = "Your driver has picked up your order #" + orderNum + ".";
+                }
+                case ENROUTE -> {
+                    title = "On the Way!";
+                    message = "Your order #" + orderNum + " is on its way to you.";
+                }
+                case DELIVERED -> {
+                    title = "Order Delivered";
+                    message = "Your order #" + orderNum + " has been delivered. Enjoy your meal!";
+                }
+                case CANCELLED -> {
+                    title = "Order Cancelled";
+                    message = "Your order #" + orderNum + " has been cancelled.";
+                    if (order.getCancellationReason() != null) {
+                        message += " Reason: " + order.getCancellationReason();
+                    }
+                }
+                default -> {
+                    return; // No notification for other statuses
+                }
+            }
+
+            notificationService.createNotification(customerId, NotificationType.ORDER_UPDATE,
+                    title, message, orderId);
+
+            log.debug("Notification sent to customer {} for order {} status: {}", customerId, orderId, newStatus);
+        } catch (Exception e) {
+            // Don't let notification failures break the status update flow
+            log.warn("Failed to send status notification for order {}: {}", order.getId(), e.getMessage());
+        }
     }
 }

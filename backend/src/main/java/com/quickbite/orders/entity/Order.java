@@ -119,6 +119,9 @@ public class Order {
     @Column(name = "estimated_prep_mins")
     private Integer estimatedPrepMins;
 
+    @Column(name = "delivery_proof_id", columnDefinition = "uuid")
+    private UUID deliveryProofId;
+
     // ---- end Phase 3 ----
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)

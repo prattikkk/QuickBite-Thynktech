@@ -2,7 +2,7 @@
  * Notification types
  */
 
-export type NotificationType = 'ORDER_UPDATE' | 'PROMO' | 'SYSTEM' | 'DRIVER_ASSIGNED' | 'PAYMENT';
+export type NotificationType = 'ORDER_UPDATE' | 'PROMO' | 'SYSTEM' | 'DRIVER_ASSIGNED' | 'PAYMENT' | 'DELIVERY_PROOF' | 'DELIVERY_CONFIRMED';
 
 export interface NotificationDTO {
   id: string;

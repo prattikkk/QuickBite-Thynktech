@@ -7,7 +7,7 @@ import { useParams, Link } from 'react-router-dom';
 import { orderService } from '../services';
 import { useOrderUpdates } from '../hooks';
 import { OrderDTO, OrderStatus } from '../types';
-import { LoadingSpinner } from '../components';
+import { LoadingSpinner, DeliveryProofDisplay } from '../components';
 import { formatCurrencyCompact, formatDateTime } from '../utils';
 import { useToastStore } from '../store';
 
@@ -248,6 +248,11 @@ export default function OrderTrack() {
               </div>
             )}
           </div>
+
+          {/* Delivery Proof — Phase 3 */}
+          {(order.status === 'DELIVERED' || order.status === 'ENROUTE') && id && (
+            <DeliveryProofDisplay orderId={id} />
+          )}
         </div>
 
         {/* Order Items */}

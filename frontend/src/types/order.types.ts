@@ -120,3 +120,20 @@ export interface TransitionError {
   targetStatus?: string;
   reason?: string;
 }
+
+/**
+ * Delivery proof DTO — Phase 3
+ */
+export interface DeliveryProofDTO {
+  id: string;
+  orderId: string;
+  driverId: string;
+  proofType: 'PHOTO' | 'OTP' | 'SIGNATURE';
+  photoUrl?: string;
+  otpVerified?: boolean;
+  notes?: string;
+  lat?: number;
+  lng?: number;
+  submittedAt: string;
+  createdAt: string;
+}

@@ -8,5 +8,7 @@ public enum NotificationType {
     PROMO,
     SYSTEM,
     DRIVER_ASSIGNED,
-    PAYMENT
+    PAYMENT,
+    DELIVERY_PROOF,
+    DELIVERY_CONFIRMED
 }

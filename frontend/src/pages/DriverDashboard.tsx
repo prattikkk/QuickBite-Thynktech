@@ -6,6 +6,7 @@ import { useState, useEffect, FormEvent } from 'react';
 import { driverService, type DriverOrderSummary, type DriverProfileDTO } from '../services/driver.service';
 import { OrderDTO } from '../types';
 import { LoadingSpinner } from '../components';
+import ProofCaptureModal from '../components/ProofCaptureModal';
 import { formatCurrencyCompact, formatDateTime } from '../utils';
 import { useToastStore } from '../store';
 import { useDriverLocation } from '../hooks';
@@ -22,6 +23,7 @@ export default function DriverDashboard() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [statusToggling, setStatusToggling] = useState(false);
   const [shiftLoading, setShiftLoading] = useState(false);
+  const [proofOrderId, setProofOrderId] = useState<string | null>(null);
   const { success, error: showError } = useToastStore();
 
   // Shift-based live location tracking
@@ -125,10 +127,16 @@ export default function DriverDashboard() {
   };
 
   const handleDeliver = async (orderId: string) => {
+    // Open proof capture modal instead of directly marking delivered
+    setProofOrderId(orderId);
+  };
+
+  const handleDeliverConfirmed = async (orderId: string) => {
     try {
       setActionLoading(orderId);
       await driverService.markDelivered(orderId);
       success('Order delivered successfully!');
+      setProofOrderId(null);
       loadOrders();
     } catch (err: any) {
       showError(err.message || 'Failed to update order');
@@ -533,6 +541,19 @@ export default function DriverDashboard() {
           </div>
         )}
       </div>
+
+      {/* Proof-of-delivery modal (Phase 3) */}
+      {proofOrderId && (
+        <ProofCaptureModal
+          orderId={proofOrderId}
+          onProofSubmitted={() => {
+            success('Proof submitted! Marking order as delivered...');
+            handleDeliverConfirmed(proofOrderId);
+          }}
+          onCancel={() => setProofOrderId(null)}
+          onDeliverWithoutProof={() => handleDeliverConfirmed(proofOrderId)}
+        />
+      )}
     </div>
   );
 }
