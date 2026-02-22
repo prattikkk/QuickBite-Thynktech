@@ -3,11 +3,15 @@ import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 import path from 'path'
 
+// Capacitor builds should NOT register a service worker (native shell handles caching)
+const isCapacitor = process.env.VITE_CAPACITOR === 'true';
+
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
     react(),
-    VitePWA({
+    // Skip PWA plugin entirely for Capacitor native builds
+    ...(!isCapacitor ? [VitePWA({
       registerType: 'prompt',
       includeAssets: ['icons/icon-72x72.svg', 'icons/icon-192x192.svg', 'icons/icon-512x512.svg'],
       manifest: {
@@ -89,11 +93,15 @@ export default defineConfig({
       devOptions: {
         enabled: false, // enable during PWA development debugging
       },
-    }),
+    })] : []),
   ],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      // Redirect the PWA virtual module to a no-op stub in Capacitor builds
+      ...(isCapacitor
+        ? { 'virtual:pwa-register/react': path.resolve(__dirname, 'src/hooks/pwa-register-stub.ts') }
+        : {}),
     },
   },
   envPrefix: 'VITE_',
@@ -110,6 +118,23 @@ export default defineConfig({
       '/ws': {
         target: 'ws://localhost:8080',
         ws: true,
+      }
+    }
+  },
+  preview: {
+    port: 4173,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
+      '/ws': {
+        target: 'ws://localhost:8080',
+        ws: true,
+      },
+      '/uploads': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
       }
     }
   }

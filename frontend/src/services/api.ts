@@ -4,6 +4,7 @@
 
 import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { ApiError } from '../types';
+import { resolveApiBaseUrl } from '../native/platform';
 
 /**
  * Generate a unique idempotency key (UUID v4).
@@ -18,7 +19,7 @@ const IDEMPOTENT_ENDPOINTS = ['/orders', '/payments/intent'];
 
 // Create axios instance with default config
 const api: AxiosInstance = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
+  baseURL: resolveApiBaseUrl(),
   timeout: 15000,
   headers: {
     'Content-Type': 'application/json',

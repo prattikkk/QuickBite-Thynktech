@@ -2,12 +2,14 @@
  * usePWA — Provides install-prompt handling, online/offline state,
  * and service-worker update awareness for the QuickBite PWA.
  *
- * Uses vite-plugin-pwa's virtual `virtual:pwa-register` module
- * for SW lifecycle management.
+ * Uses vite-plugin-pwa's virtual `virtual:pwa-register/react` module
+ * for SW lifecycle management. In Capacitor builds, the virtual module
+ * is aliased to a no-op stub via vite.config.ts.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
+import { isNative } from '../native/platform';
 
 /* ── Types ─────────────────────────────────────────────────────── */
 
@@ -20,6 +22,8 @@ export interface PWAState {
   isOnline: boolean;
   /** A new SW version is waiting — call `updateServiceWorker()` to apply. */
   needRefresh: boolean;
+  /** True when running inside a Capacitor native shell. */
+  isNativeApp: boolean;
   /** Trigger the native install prompt. Resolves with the user choice. */
   promptInstall: () => Promise<'accepted' | 'dismissed' | 'unavailable'>;
   /** Accept the waiting SW and reload. */
@@ -118,6 +122,7 @@ export function usePWA(): PWAState {
     isInstalled,
     isOnline,
     needRefresh,
+    isNativeApp: isNative(),
     promptInstall,
     updateServiceWorker: () => updateServiceWorker(true),
     dismissUpdate,
