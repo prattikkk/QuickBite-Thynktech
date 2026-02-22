@@ -3,6 +3,8 @@ package com.quickbite.orders.controller;
 import com.quickbite.common.dto.ApiResponse;
 import com.quickbite.delivery.entity.DeliveryStatus;
 import com.quickbite.delivery.repository.DeliveryStatusRepository;
+import com.quickbite.orders.driver.DriverLocationDTO;
+import com.quickbite.orders.driver.DriverLocationService;
 import com.quickbite.orders.driver.DriverProfileDTO;
 import com.quickbite.orders.driver.DriverProfileService;
 import com.quickbite.orders.dto.OrderResponseDTO;
@@ -43,6 +45,7 @@ public class DriverController {
     private final OrderService orderService;
     private final DeliveryStatusRepository deliveryStatusRepository;
     private final DriverProfileService driverProfileService;
+    private final DriverLocationService driverLocationService;
     private final OrderUpdatePublisher orderUpdatePublisher;
 
     /**
@@ -105,6 +108,8 @@ public class DriverController {
 
     /**
      * Update driver location for current delivery.
+     * Stores in driver_locations history table (server-side rate guard: 12/min)
+     * and broadcasts to WebSocket subscribers.
      */
     @PutMapping("/location")
     @PreAuthorize("hasRole('DRIVER')")
@@ -114,7 +119,18 @@ public class DriverController {
             @RequestBody LocationUpdateDTO dto, Authentication auth) {
 
         UUID driverId = extractUserId(auth);
-        log.info("Driver {} location update: lat={}, lng={}", driverId, dto.getLat(), dto.getLng());
+        log.info("Driver {} location update: lat={}, lng={}, accuracy={}", driverId, dto.getLat(), dto.getLng(), dto.getAccuracy());
+
+        // Record to driver_locations history (rate-guarded: 12 samples/min)
+        if (dto.getLat() != null && dto.getLng() != null) {
+            try {
+                driverLocationService.recordLocation(driverId, dto.getLat(), dto.getLng(),
+                        dto.getAccuracy(), dto.getSpeed(), dto.getHeading());
+            } catch (IllegalStateException e) {
+                // Rate limit exceeded — still update profile & broadcast, just skip history
+                log.debug("Location history rate limit for driver {}: {}", driverId, e.getMessage());
+            }
+        }
 
         // Find active order for this driver
         List<OrderStatus> activeStatuses = List.of(
@@ -151,6 +167,44 @@ public class DriverController {
         }
 
         return ResponseEntity.ok(ApiResponse.success("Location updated", null));
+    }
+
+    /**
+     * Get recent GPS trail for the current driver (last 20 points).
+     */
+    @GetMapping("/location/recent")
+    @PreAuthorize("hasRole('DRIVER')")
+    @Operation(summary = "Recent locations", description = "Get the last 20 GPS sample points")
+    public ResponseEntity<ApiResponse<List<DriverLocationDTO>>> getRecentLocations(Authentication auth) {
+        UUID driverId = extractUserId(auth);
+        List<DriverLocationDTO> locations = driverLocationService.getRecentLocations(driverId);
+        return ResponseEntity.ok(ApiResponse.success("Recent locations", locations));
+    }
+
+    /**
+     * Start a shift — driver goes online and begins GPS sharing.
+     */
+    @PostMapping("/shift/start")
+    @PreAuthorize("hasRole('DRIVER')")
+    @Operation(summary = "Start shift", description = "Start a driving shift and go online")
+    public ResponseEntity<ApiResponse<DriverProfileDTO>> startShift(Authentication auth) {
+        UUID driverId = extractUserId(auth);
+        log.info("Driver {} starting shift", driverId);
+        DriverProfileDTO profile = driverLocationService.startShift(driverId);
+        return ResponseEntity.ok(ApiResponse.success("Shift started", profile));
+    }
+
+    /**
+     * End shift — driver goes offline and stops GPS sharing.
+     */
+    @PostMapping("/shift/end")
+    @PreAuthorize("hasRole('DRIVER')")
+    @Operation(summary = "End shift", description = "End the current shift and go offline")
+    public ResponseEntity<ApiResponse<DriverProfileDTO>> endShift(Authentication auth) {
+        UUID driverId = extractUserId(auth);
+        log.info("Driver {} ending shift", driverId);
+        DriverProfileDTO profile = driverLocationService.endShift(driverId);
+        return ResponseEntity.ok(ApiResponse.success("Shift ended", profile));
     }
 
     /**
@@ -258,6 +312,9 @@ public class DriverController {
     public static class LocationUpdateDTO {
         private Double lat;
         private Double lng;
+        private Double accuracy;
+        private Double speed;
+        private Double heading;
     }
 
     @Data

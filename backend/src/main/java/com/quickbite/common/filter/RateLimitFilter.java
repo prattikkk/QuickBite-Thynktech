@@ -27,14 +27,17 @@ public class RateLimitFilter implements Filter {
     private final StringRedisTemplate redisTemplate;
     private final long maxRequestsPerMinute;
     private final long authMaxRequestsPerMinute;
+    private final long locationMaxRequestsPerMinute;
 
     public RateLimitFilter(
             @org.springframework.lang.Nullable StringRedisTemplate redisTemplate,
             @Value("${rate-limit.requests-per-minute:100}") long maxRequestsPerMinute,
-            @Value("${rate-limit.auth-requests-per-minute:20}") long authMaxRequestsPerMinute) {
+            @Value("${rate-limit.auth-requests-per-minute:20}") long authMaxRequestsPerMinute,
+            @Value("${rate-limit.location-requests-per-minute:30}") long locationMaxRequestsPerMinute) {
         this.redisTemplate = redisTemplate;
         this.maxRequestsPerMinute = maxRequestsPerMinute;
         this.authMaxRequestsPerMinute = authMaxRequestsPerMinute;
+        this.locationMaxRequestsPerMinute = locationMaxRequestsPerMinute;
     }
 
     @Override
@@ -52,8 +55,20 @@ public class RateLimitFilter implements Filter {
         }
 
         String identity = resolveIdentity(httpReq);
-        long limit = path.startsWith("/api/auth") ? authMaxRequestsPerMinute : maxRequestsPerMinute;
-        String key = "rl:" + identity;
+        long limit;
+        String key;
+        if (path.startsWith("/api/auth")) {
+            limit = authMaxRequestsPerMinute;
+            key = "rl:" + identity;
+        } else if (path.contains("/drivers") && path.contains("/location")
+                && "PUT".equalsIgnoreCase(httpReq.getMethod())) {
+            // Dedicated higher-frequency bucket for GPS location updates
+            limit = locationMaxRequestsPerMinute;
+            key = "rl:loc:" + identity;
+        } else {
+            limit = maxRequestsPerMinute;
+            key = "rl:" + identity;
+        }
 
         if (redisTemplate == null) {
             chain.doFilter(request, response);

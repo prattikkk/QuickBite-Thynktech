@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 /**
@@ -27,4 +28,6 @@ public class DriverProfileDTO {
     private Double currentLng;
     private Integer totalDeliveries;
     private BigDecimal successRate;
+    private OffsetDateTime shiftStartedAt;
+    private OffsetDateTime shiftEndedAt;
 }

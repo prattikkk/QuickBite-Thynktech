@@ -94,6 +94,36 @@ public class DriverProfileService {
     }
 
     /**
+     * Start shift: set online, record shift_started_at, clear shift_ended_at.
+     */
+    @Transactional
+    public DriverProfileDTO startShift(UUID userId) {
+        DriverProfile profile = getOrCreateProfile(userId);
+        profile.setIsOnline(true);
+        profile.setShiftStartedAt(OffsetDateTime.now());
+        profile.setShiftEndedAt(null);
+        profile.setLastSeenAt(OffsetDateTime.now());
+        driverProfileRepository.save(profile);
+        log.info("Driver {} started shift", userId);
+        return mapToDTO(profile);
+    }
+
+    /**
+     * End shift: set offline, record shift_ended_at, clear current location.
+     */
+    @Transactional
+    public DriverProfileDTO endShift(UUID userId) {
+        DriverProfile profile = getOrCreateProfile(userId);
+        profile.setIsOnline(false);
+        profile.setShiftEndedAt(OffsetDateTime.now());
+        profile.setCurrentLat(null);
+        profile.setCurrentLng(null);
+        driverProfileRepository.save(profile);
+        log.info("Driver {} ended shift", userId);
+        return mapToDTO(profile);
+    }
+
+    /**
      * Increment total deliveries and recalculate success rate.
      */
     @Transactional
@@ -123,6 +153,8 @@ public class DriverProfileService {
                 .currentLng(profile.getCurrentLng() != null ? profile.getCurrentLng().doubleValue() : null)
                 .totalDeliveries(profile.getTotalDeliveries())
                 .successRate(profile.getSuccessRate())
+                .shiftStartedAt(profile.getShiftStartedAt())
+                .shiftEndedAt(profile.getShiftEndedAt())
                 .build();
     }
 }

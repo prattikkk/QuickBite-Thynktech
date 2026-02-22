@@ -54,6 +54,14 @@ public class DriverProfile {
     @Column(name = "last_seen_at")
     private OffsetDateTime lastSeenAt;
 
+    /** Phase 2: when the current shift started (null = not on shift). */
+    @Column(name = "shift_started_at")
+    private OffsetDateTime shiftStartedAt;
+
+    /** Phase 2: when the last shift ended. */
+    @Column(name = "shift_ended_at")
+    private OffsetDateTime shiftEndedAt;
+
     @Column(name = "total_deliveries", nullable = false)
     @Builder.Default
     private Integer totalDeliveries = 0;

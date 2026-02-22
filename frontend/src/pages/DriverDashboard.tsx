@@ -1,5 +1,5 @@
 /**
- * DriverDashboard page — Phase 1 enhanced with profile, online/offline toggle, and vehicle management.
+ * DriverDashboard page — Phase 2 enhanced with live location, shift management, and GPS indicator.
  */
 
 import { useState, useEffect, FormEvent } from 'react';
@@ -8,6 +8,7 @@ import { OrderDTO } from '../types';
 import { LoadingSpinner } from '../components';
 import { formatCurrencyCompact, formatDateTime } from '../utils';
 import { useToastStore } from '../store';
+import { useDriverLocation } from '../hooks';
 
 type Tab = 'assigned' | 'available' | 'history' | 'profile';
 
@@ -20,7 +21,12 @@ export default function DriverDashboard() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [statusToggling, setStatusToggling] = useState(false);
+  const [shiftLoading, setShiftLoading] = useState(false);
   const { success, error: showError } = useToastStore();
+
+  // Shift-based live location tracking
+  const isShiftActive = profile?.shiftStartedAt != null && profile?.shiftEndedAt == null && profile?.isOnline;
+  const locationState = useDriverLocation({ enabled: !!isShiftActive });
 
   // Profile edit form state
   const [editVehicle, setEditVehicle] = useState('');
@@ -145,6 +151,31 @@ export default function DriverDashboard() {
     }
   };
 
+  const handleShiftToggle = async () => {
+    if (!profile) return;
+    try {
+      setShiftLoading(true);
+      if (isShiftActive) {
+        const updated = await driverService.endShift();
+        setProfile(updated);
+        success('Shift ended — GPS sharing stopped');
+      } else {
+        // Check location permission before starting shift
+        if (locationState.permissionState === 'denied') {
+          showError('Location permission denied. Please enable it in browser settings.');
+          return;
+        }
+        const updated = await driverService.startShift();
+        setProfile(updated);
+        success('Shift started — GPS sharing active');
+      }
+    } catch (err: any) {
+      showError(err.message || 'Failed to toggle shift');
+    } finally {
+      setShiftLoading(false);
+    }
+  };
+
   const handleProfileSave = async (e: FormEvent) => {
     e.preventDefault();
     try {
@@ -170,23 +201,68 @@ export default function DriverDashboard() {
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header with online/offline toggle */}
+        {/* Header with shift toggle and GPS indicator */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-4">
           <h1 className="text-3xl font-bold text-gray-900">Driver Dashboard</h1>
-          {profile && (
-            <button
-              onClick={handleToggleStatus}
-              disabled={statusToggling}
-              className={`flex items-center gap-2 px-5 py-2 rounded-full font-semibold text-sm transition-colors shadow ${
-                profile.isOnline
-                  ? 'bg-green-500 text-white hover:bg-green-600'
-                  : 'bg-gray-400 text-white hover:bg-gray-500'
-              } disabled:opacity-50`}
-            >
-              <span className={`h-3 w-3 rounded-full ${profile.isOnline ? 'bg-green-200 animate-pulse' : 'bg-gray-200'}`} />
-              {statusToggling ? 'Updating...' : profile.isOnline ? 'Online' : 'Offline'}
-            </button>
-          )}
+          <div className="flex items-center gap-3">
+            {/* GPS location indicator */}
+            {isShiftActive && (
+              <div className="flex items-center gap-1.5 text-xs">
+                {locationState.isTracking ? (
+                  <>
+                    <span className="relative flex h-3 w-3">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500" />
+                    </span>
+                    <span className="text-green-700 font-medium">
+                      GPS Active{locationState.accuracy ? ` (±${Math.round(locationState.accuracy)}m)` : ''}
+                    </span>
+                  </>
+                ) : locationState.error ? (
+                  <>
+                    <span className="h-3 w-3 rounded-full bg-red-500" />
+                    <span className="text-red-600 font-medium">{locationState.error}</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="h-3 w-3 rounded-full bg-yellow-400 animate-pulse" />
+                    <span className="text-yellow-700 font-medium">Acquiring GPS...</span>
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* Shift Start/Stop button */}
+            {profile && (
+              <button
+                onClick={handleShiftToggle}
+                disabled={shiftLoading}
+                className={`flex items-center gap-2 px-5 py-2 rounded-full font-semibold text-sm transition-colors shadow ${
+                  isShiftActive
+                    ? 'bg-red-500 text-white hover:bg-red-600'
+                    : 'bg-green-500 text-white hover:bg-green-600'
+                } disabled:opacity-50`}
+              >
+                <span className={`h-3 w-3 rounded-full ${isShiftActive ? 'bg-red-200 animate-pulse' : 'bg-green-200'}`} />
+                {shiftLoading ? 'Updating...' : isShiftActive ? 'End Shift' : 'Start Shift'}
+              </button>
+            )}
+
+            {/* Legacy online/offline toggle (kept as secondary control) */}
+            {profile && !isShiftActive && (
+              <button
+                onClick={handleToggleStatus}
+                disabled={statusToggling}
+                className={`flex items-center gap-2 px-4 py-2 rounded-full font-medium text-xs transition-colors ${
+                  profile.isOnline
+                    ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                    : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                } disabled:opacity-50`}
+              >
+                {statusToggling ? '...' : profile.isOnline ? 'Online' : 'Offline'}
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Stats bar */}

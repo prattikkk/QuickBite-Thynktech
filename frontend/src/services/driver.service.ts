@@ -34,6 +34,19 @@ export interface DriverProfileDTO {
   currentLng: number | null;
   totalDeliveries: number;
   successRate: number;
+  shiftStartedAt: string | null;
+  shiftEndedAt: string | null;
+}
+
+export interface DriverLocationPoint {
+  id: string;
+  driverId: string;
+  lat: number;
+  lng: number;
+  accuracy: number | null;
+  speed: number | null;
+  heading: number | null;
+  recordedAt: string;
 }
 
 export const driverService = {
@@ -73,11 +86,41 @@ export const driverService = {
   },
 
   /**
-   * Update driver GPS location for current active delivery
-   * Uses dedicated DriverController endpoint
+   * Update driver GPS location for current active delivery.
+   * Enhanced with accuracy, speed, heading for Phase 2 live location.
    */
-  updateLocation: async (lat: number, lng: number): Promise<void> => {
-    await api.put('/drivers/location', { lat, lng });
+  updateLocation: async (
+    lat: number,
+    lng: number,
+    accuracy?: number | null,
+    speed?: number | null,
+    heading?: number | null,
+  ): Promise<void> => {
+    await api.put('/drivers/location', { lat, lng, accuracy, speed, heading });
+  },
+
+  /**
+   * Get recent GPS trail (last 20 sample points)
+   */
+  getRecentLocations: async (): Promise<DriverLocationPoint[]> => {
+    const response = await api.get<any, DriverLocationPoint[]>('/drivers/location/recent');
+    return response;
+  },
+
+  /**
+   * Start a shift — go online and begin GPS sharing
+   */
+  startShift: async (): Promise<DriverProfileDTO> => {
+    const response = await api.post<any, DriverProfileDTO>('/drivers/shift/start');
+    return response;
+  },
+
+  /**
+   * End shift — go offline and stop GPS sharing
+   */
+  endShift: async (): Promise<DriverProfileDTO> => {
+    const response = await api.post<any, DriverProfileDTO>('/drivers/shift/end');
+    return response;
   },
 
   /**
