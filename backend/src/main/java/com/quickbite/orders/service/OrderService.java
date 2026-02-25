@@ -6,6 +6,7 @@ import com.quickbite.orders.driver.DriverAssignmentService;
 import com.quickbite.orders.dto.OrderCreateDTO;
 import com.quickbite.orders.dto.OrderResponseDTO;
 import com.quickbite.orders.dto.StatusUpdateDTO;
+import com.quickbite.orders.entity.DeliveryType;
 import com.quickbite.orders.entity.Order;
 import com.quickbite.orders.entity.OrderItem;
 import com.quickbite.orders.entity.OrderStatus;
@@ -204,8 +205,19 @@ public class OrderService {
             orderItems.add(orderItem);
         }
 
+        // Determine delivery type (PICKUP = no delivery fee)
+        DeliveryType deliveryTypeEnum = DeliveryType.DELIVERY;
+        if (dto.getDeliveryType() != null) {
+            try {
+                deliveryTypeEnum = DeliveryType.valueOf(dto.getDeliveryType().toUpperCase());
+            } catch (IllegalArgumentException e) {
+                log.warn("Invalid delivery type '{}', defaulting to DELIVERY", dto.getDeliveryType());
+            }
+        }
+        long effectiveDeliveryFee = deliveryTypeEnum == DeliveryType.PICKUP ? 0L : deliveryFeeCents;
+
         long taxCents = Math.round(subtotalCents * taxRate);
-        long totalCents = subtotalCents + taxCents + deliveryFeeCents;
+        long totalCents = subtotalCents + taxCents + effectiveDeliveryFee;
 
         // 5b. Fraud velocity checks
         OrderFraudService.FraudCheckResult fraudCheck = orderFraudService.checkOrderCreation(customerId, totalCents);
@@ -234,11 +246,12 @@ public class OrderService {
                 .deliveryAddress(deliveryAddress)
                 .status(OrderStatus.PLACED)
                 .subtotalCents(subtotalCents)
-                .deliveryFeeCents(deliveryFeeCents)
+                .deliveryFeeCents(effectiveDeliveryFee)
                 .taxCents(taxCents)
                 .discountCents(discountCents)
                 .totalCents(totalCents)
                 .promoCode(promoCode)
+                .deliveryType(deliveryTypeEnum)
                 .paymentMethod(mapPaymentMethod(dto.getPaymentMethod()))
                 .paymentStatus(PaymentStatus.PENDING)
                 .scheduledTime(dto.getScheduledTime() != null ? dto.getScheduledTime().atOffset(ZoneOffset.UTC) : OffsetDateTime.now())
@@ -812,5 +825,72 @@ public class OrderService {
             // Don't let notification failures break the status update flow
             log.warn("Failed to send status notification for order {}: {}", order.getId(), e.getMessage());
         }
+    }
+
+    // ── Tip feature ──────────────────────────────────────────────────────
+
+    /**
+     * Add a tip to a delivered order.
+     */
+    @Transactional
+    public OrderResponseDTO addTip(UUID orderId, UUID customerId, long tipCents) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new OrderNotFoundException(orderId));
+
+        if (!order.getCustomer().getId().equals(customerId)) {
+            throw new IllegalStateException("You can only tip on your own orders");
+        }
+
+        if (order.getStatus() != OrderStatus.DELIVERED) {
+            throw new IllegalStateException("Tips can only be added to delivered orders");
+        }
+
+        order.setTipCents(tipCents);
+        order = orderRepository.save(order);
+
+        // Notify the driver about the tip
+        if (order.getDriver() != null) {
+            try {
+                notificationService.createNotification(
+                        order.getDriver().getId(),
+                        NotificationType.ORDER_UPDATE,
+                        "You received a tip!",
+                        "You received a tip of $" + String.format("%.2f", tipCents / 100.0) +
+                                " for order #" + (order.getOrderNumber() != null ? order.getOrderNumber() : orderId.toString().substring(0, 8)),
+                        orderId
+                );
+            } catch (Exception e) {
+                log.warn("Failed to send tip notification to driver: {}", e.getMessage());
+            }
+        }
+
+        log.info("Tip of {} cents added to order {} by customer {}", tipCents, orderId, customerId);
+        return orderMapper.toResponseDTO(order);
+    }
+
+    // ── Alert customer (driver notifies customer of arrival) ─────────────
+
+    /**
+     * Driver sends an alert notification to the customer for a specific order.
+     */
+    @Transactional(readOnly = true)
+    public void alertCustomer(UUID orderId, UUID driverId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new OrderNotFoundException(orderId));
+
+        if (order.getDriver() == null || !order.getDriver().getId().equals(driverId)) {
+            throw new IllegalStateException("Only the assigned driver can alert the customer");
+        }
+
+        String orderNum = order.getOrderNumber() != null ? order.getOrderNumber() : orderId.toString().substring(0, 8);
+        notificationService.createNotification(
+                order.getCustomer().getId(),
+                NotificationType.ORDER_UPDATE,
+                "Your driver is nearby!",
+                "The driver for order #" + orderNum + " is approaching your location. Please be ready!",
+                orderId
+        );
+
+        log.info("Driver {} alerted customer for order {}", driverId, orderId);
     }
 }

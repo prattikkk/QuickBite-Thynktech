@@ -160,4 +160,43 @@ public class VendorController {
 
         return ResponseEntity.ok(ApiResponse.success("Restaurant updated successfully", vendorCacheService.toDTO(vendor)));
     }
+
+    // ── Live GPS sharing for mobile vendors ──────────────────────────────
+
+    /**
+     * Update the vendor's live GPS location (for mobile food trucks / stalls).
+     * Lightweight endpoint optimised for frequent calls from a mobile device.
+     */
+    @PutMapping("/my/location")
+    @PreAuthorize("hasRole('VENDOR')")
+    @Operation(summary = "Update live GPS location", description = "Share the vendor's current GPS coordinates (for mobile vendors)")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> updateVendorLocation(
+            @RequestBody Map<String, Object> body,
+            Authentication authentication
+    ) {
+        UUID userId = UUID.fromString(authentication.getName());
+        Vendor vendor = vendorRepository.findByUserId(userId)
+                .orElseThrow(() -> new RuntimeException("No vendor profile found"));
+
+        Number latNum = (Number) body.get("lat");
+        Number lngNum = (Number) body.get("lng");
+        if (latNum == null || lngNum == null) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("lat and lng are required"));
+        }
+
+        vendor.setLat(new java.math.BigDecimal(latNum.toString()));
+        vendor.setLng(new java.math.BigDecimal(lngNum.toString()));
+        vendor = vendorRepository.save(vendor);
+        vendorCacheService.evictAllVendorCaches();
+
+        Map<String, Object> result = new java.util.LinkedHashMap<>();
+        result.put("vendorId", vendor.getId());
+        result.put("lat", vendor.getLat());
+        result.put("lng", vendor.getLng());
+        result.put("updatedAt", vendor.getUpdatedAt() != null ? vendor.getUpdatedAt().toString() : null);
+
+        log.info("Vendor {} updated live location to ({}, {})", vendor.getId(), vendor.getLat(), vendor.getLng());
+        return ResponseEntity.ok(ApiResponse.success("Location updated", result));
+    }
 }

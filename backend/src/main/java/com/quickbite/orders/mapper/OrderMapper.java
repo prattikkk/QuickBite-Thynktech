@@ -80,6 +80,9 @@ public class OrderMapper {
                 .refundStatus(deriveRefundStatus(order))
                 .commissionCents(order.getCommissionCents())
                 .vendorPayoutCents(order.getVendorPayoutCents())
+                .deliveryType(order.getDeliveryType() != null ? order.getDeliveryType().name() : "DELIVERY")
+                .tipCents(order.getTipCents() != null ? order.getTipCents() : 0L)
+                .customerAvatarUrl(order.getCustomer().getAvatarUrl())
                 .build();
     }
 

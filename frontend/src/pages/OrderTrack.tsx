@@ -23,6 +23,12 @@ export default function OrderTrack() {
   const [showChat, setShowChat] = useState(false);
   const { success: showSuccess, error: showError } = useToastStore();
 
+  // Tip state
+  const [tipAmount, setTipAmount] = useState<number | null>(null);
+  const [customTip, setCustomTip] = useState('');
+  const [submittingTip, setSubmittingTip] = useState(false);
+  const [tipSent, setTipSent] = useState(false);
+
   useEffect(() => {
     if (id) {
       loadOrder();
@@ -72,6 +78,25 @@ export default function OrderTrack() {
       showError(err.message || 'Failed to cancel order');
     } finally {
       setCancelling(false);
+    }
+  };
+
+  const handleTipSubmit = async () => {
+    const cents = tipAmount ?? (customTip ? Math.round(parseFloat(customTip) * 100) : 0);
+    if (!id || cents <= 0) {
+      showError('Please select or enter a tip amount');
+      return;
+    }
+    try {
+      setSubmittingTip(true);
+      const updated = await orderService.tipDriver(id, cents);
+      setOrder(updated);
+      setTipSent(true);
+      showSuccess(`Tip of ${formatCurrencyCompact(cents)} sent to driver!`);
+    } catch (err: any) {
+      showError(err.message || 'Failed to send tip');
+    } finally {
+      setSubmittingTip(false);
     }
   };
 
@@ -156,6 +181,11 @@ export default function OrderTrack() {
               <span className={`px-4 py-2 rounded-full text-sm font-medium ${getStatusColor(order.status)}`}>
                 {order.status}
               </span>
+              {order.deliveryType === 'PICKUP' && (
+                <span className="px-3 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-700">
+                  🏪 Pickup
+                </span>
+              )}
             </div>
           </div>
 
@@ -282,6 +312,61 @@ export default function OrderTrack() {
           {order.status === 'DELIVERED' && id && (
             <div className="mt-6">
               <ReviewForm orderId={id} />
+            </div>
+          )}
+
+          {/* Tip the Driver — shows for delivered orders */}
+          {order.status === 'DELIVERED' && order.driverName && (
+            <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              {(order.tipCents ?? 0) > 0 || tipSent ? (
+                <div className="flex items-center gap-2 text-yellow-800">
+                  <span className="text-xl">💰</span>
+                  <span className="font-medium">
+                    Tip of {formatCurrencyCompact(order.tipCents ?? tipAmount ?? 0)} sent to {order.driverName}. Thank you!
+                  </span>
+                </div>
+              ) : (
+                <div>
+                  <h3 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                    <span className="text-xl">💰</span> Tip your driver
+                  </h3>
+                  <p className="text-sm text-gray-600 mb-3">
+                    Show appreciation for {order.driverName}'s service
+                  </p>
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {[50, 100, 200, 500].map((cents) => (
+                      <button
+                        key={cents}
+                        type="button"
+                        onClick={() => { setTipAmount(cents); setCustomTip(''); }}
+                        className={`px-4 py-2 rounded-lg border-2 font-medium text-sm transition-colors ${
+                          tipAmount === cents
+                            ? 'border-yellow-500 bg-yellow-100 text-yellow-800'
+                            : 'border-gray-200 hover:border-yellow-300 text-gray-700'
+                        }`}
+                      >
+                        {formatCurrencyCompact(cents)}
+                      </button>
+                    ))}
+                    <input
+                      type="number"
+                      placeholder="Custom"
+                      value={customTip}
+                      onChange={(e) => { setCustomTip(e.target.value); setTipAmount(null); }}
+                      className="w-24 px-3 py-2 border-2 border-gray-200 rounded-lg text-sm focus:outline-none focus:border-yellow-500"
+                      min="0.01"
+                      step="0.01"
+                    />
+                  </div>
+                  <button
+                    onClick={handleTipSubmit}
+                    disabled={submittingTip || (!tipAmount && !customTip)}
+                    className="px-6 py-2 bg-yellow-500 text-white font-medium rounded-lg hover:bg-yellow-600 disabled:opacity-50 transition-colors text-sm"
+                  >
+                    {submittingTip ? 'Sending...' : 'Send Tip'}
+                  </button>
+                </div>
+              )}
             </div>
           )}
 

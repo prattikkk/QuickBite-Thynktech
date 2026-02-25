@@ -146,6 +146,15 @@ export const orderService = {
     const response = await api.post<any, OrderDTO>(`/orders/${orderId}/assign/${driverId}`, {});
     return response;
   },
+
+  /**
+   * Tip the driver for a delivered order.
+   * POST /orders/:orderId/tip
+   */
+  tipDriver: async (orderId: string, tipCents: number): Promise<OrderDTO> => {
+    const response = await api.post<any, OrderDTO>(`/orders/${orderId}/tip`, { tipCents });
+    return response;
+  },
 };
 
 export default orderService;

@@ -69,6 +69,9 @@ function CheckoutForm() {
   const [scheduleOrder, setScheduleOrder] = useState(false);
   const [scheduledTime, setScheduledTime] = useState('');
 
+  // Delivery type (PICKUP vs DELIVERY)
+  const [deliveryType, setDeliveryType] = useState<'DELIVERY' | 'PICKUP'>('DELIVERY');
+
   // Inline "Add Address" form state
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [newAddress, setNewAddress] = useState<Omit<AddressDTO, 'id'>>(EMPTY_ADDRESS);
@@ -153,7 +156,7 @@ function CheckoutForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!selectedAddressId) {
+    if (deliveryType === 'DELIVERY' && !selectedAddressId) {
       showError('Please select a delivery address');
       return;
     }
@@ -196,11 +199,12 @@ function CheckoutForm() {
           menuItemId: item.menuItemId,
           quantity: item.quantity,
         })),
-        addressId: selectedAddressId,
+        addressId: deliveryType === 'DELIVERY' ? selectedAddressId! : (selectedAddressId || undefined),
         paymentMethod,
         specialInstructions: specialInstructions.trim() || undefined,
         promoCode: promoApplied ? promoCode.trim() : undefined,
         scheduledTime: scheduleOrder && scheduledTime ? scheduledTime : undefined,
+        deliveryType,
       };
 
       const order = await orderService.createOrder(orderData);
@@ -233,7 +237,7 @@ function CheckoutForm() {
   };
 
   const subtotal = getSubtotalCents();
-  const deliveryFee = 5000;
+  const deliveryFee = deliveryType === 'PICKUP' ? 0 : 5000;
   const tax = Math.round(subtotal * 0.05);
   const total = subtotal + deliveryFee + tax - promoDiscount;
 
@@ -251,7 +255,35 @@ function CheckoutForm() {
         <h1 className="text-3xl font-bold text-gray-900 mb-8">Checkout</h1>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Delivery Type Toggle */}
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h2 className="text-xl font-bold mb-4">Order Type</h2>
+            <div className="grid grid-cols-2 gap-3">
+              {(['DELIVERY', 'PICKUP'] as const).map((type) => (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => setDeliveryType(type)}
+                  className={`flex items-center justify-center gap-2 p-4 rounded-lg border-2 transition-colors font-medium ${
+                    deliveryType === type
+                      ? 'border-primary-600 bg-primary-50 text-primary-700'
+                      : 'border-gray-200 hover:border-gray-300 text-gray-600'
+                  }`}
+                >
+                  <span className="text-xl">{type === 'DELIVERY' ? '🛵' : '🏪'}</span>
+                  <span>{type === 'DELIVERY' ? 'Delivery' : 'Pickup'}</span>
+                </button>
+              ))}
+            </div>
+            {deliveryType === 'PICKUP' && (
+              <p className="text-sm text-gray-500 mt-3">
+                Pick up your order directly from the restaurant. No delivery fee!
+              </p>
+            )}
+          </div>
+
           {/* Delivery Address */}
+          {deliveryType === 'DELIVERY' && (
           <div className="bg-white rounded-lg shadow-md p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-bold">Delivery Address</h2>
@@ -380,6 +412,7 @@ function CheckoutForm() {
               </div>
             )}
           </div>
+          )}
 
           {/* Payment Method */}
           <div className="bg-white rounded-lg shadow-md p-6">
@@ -536,7 +569,7 @@ function CheckoutForm() {
 
             <button
               type="submit"
-              disabled={submitting || addresses.length === 0 || ((paymentMethod === 'CARD' || paymentMethod === 'UPI') && !stripe)}
+              disabled={submitting || (deliveryType === 'DELIVERY' && addresses.length === 0) || ((paymentMethod === 'CARD' || paymentMethod === 'UPI') && !stripe)}
               className="w-full bg-primary-600 text-white py-3 rounded-lg hover:bg-primary-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {submitting && <LoadingSpinner size="sm" />}

@@ -38,6 +38,9 @@ public class OrderCreateDTO {
     /** Optional promo code to apply discount. */
     private String promoCode;
 
+    /** PICKUP or DELIVERY (defaults to DELIVERY if null). */
+    private String deliveryType;
+
     public enum PaymentMethod {
         CARD,
         UPI,

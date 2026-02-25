@@ -40,6 +40,9 @@ export interface OrderDTO {
   deliveredAt?: string;
   estimatedDeliveryAt?: string;
   estimatedPrepMins?: number;
+  deliveryType?: 'PICKUP' | 'DELIVERY';
+  tipCents?: number;
+  customerAvatarUrl?: string;
 }
 
 export type OrderStatus =
@@ -75,11 +78,12 @@ export interface OrderItemDTO {
 
 export interface OrderCreateRequest {
   items: OrderItemCreateRequest[];
-  addressId: string;
+  addressId?: string;
   paymentMethod: PaymentMethod;
   specialInstructions?: string;
   promoCode?: string;
   scheduledTime?: string;
+  deliveryType?: 'PICKUP' | 'DELIVERY';
 }
 
 export interface OrderItemCreateRequest {

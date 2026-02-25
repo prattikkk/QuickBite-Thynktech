@@ -283,6 +283,20 @@ public class DriverController {
     // ── Vendor-facing endpoints ──────────────────────────────────────
 
     /**
+     * Alert customer — driver sends a push notification to the customer for an order.
+     */
+    @PostMapping("/orders/{orderId}/alert-customer")
+    @PreAuthorize("hasRole('DRIVER')")
+    @Operation(summary = "Alert customer", description = "Send a push notification to the customer that the driver is arriving")
+    public ResponseEntity<ApiResponse<Void>> alertCustomer(
+            @PathVariable UUID orderId, Authentication auth) {
+        UUID driverId = extractUserId(auth);
+        log.info("Driver {} alerting customer for order {}", driverId, orderId);
+        orderService.alertCustomer(orderId, driverId);
+        return ResponseEntity.ok(ApiResponse.success("Customer has been notified", null));
+    }
+
+    /**
      * List currently online drivers (accessible to VENDOR and ADMIN for runner assignment).
      */
     @GetMapping("/online")

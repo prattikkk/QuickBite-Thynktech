@@ -254,6 +254,14 @@ export const driverService = {
     const response = await api.get<any, DeliveryProofDTO | null>(`/orders/${orderId}/proof`);
     return response;
   },
+
+  /**
+   * Alert customer that the driver is arriving.
+   * POST /drivers/orders/:orderId/alert-customer
+   */
+  alertCustomer: async (orderId: string): Promise<void> => {
+    await api.post(`/drivers/orders/${orderId}/alert-customer`, {});
+  },
 };
 
 export default driverService;

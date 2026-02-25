@@ -257,6 +257,28 @@ public class OrderController {
                 .body(ApiResponse.success("Reorder placed successfully", order));
     }
 
+    /**
+     * Tip the runner — customer adds a tip to a delivered order.
+     */
+    @PostMapping("/{id}/tip")
+    @PreAuthorize("hasRole('CUSTOMER')")
+    @Operation(summary = "Tip driver", description = "Add a tip to a delivered order")
+    public ResponseEntity<ApiResponse<OrderResponseDTO>> tipDriver(
+            @PathVariable UUID id,
+            @RequestBody Map<String, Object> body,
+            Authentication authentication
+    ) {
+        UUID customerId = extractUserId(authentication);
+        long tipCents = ((Number) body.getOrDefault("tipCents", 0)).longValue();
+        if (tipCents <= 0) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Tip amount must be positive"));
+        }
+        log.info("Customer {} tipping {} cents on order {}", customerId, tipCents, id);
+        OrderResponseDTO order = orderService.addTip(id, customerId, tipCents);
+        return ResponseEntity.ok(ApiResponse.success("Tip added successfully", order));
+    }
+
     // ========== Helper Methods ==========
 
     private UUID extractUserId(Authentication authentication) {

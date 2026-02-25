@@ -24,6 +24,13 @@ const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || '';
 
 mapboxgl.accessToken = MAPBOX_TOKEN;
 
+interface ExtraMarker {
+  lat: number;
+  lng: number;
+  label?: string;
+  color?: string;
+}
+
 interface LiveMapViewProps {
   orderId: string;
   vendorLat?: number;
@@ -37,6 +44,8 @@ interface LiveMapViewProps {
   className?: string;
   /** When true, uses driverLat/driverLng props directly (driver's own GPS) instead of polling the API */
   isDriverView?: boolean;
+  /** Additional markers to render (e.g. all assigned order destinations) */
+  extraMarkers?: ExtraMarker[];
 }
 
 const USE_WEBSOCKET = import.meta.env.VITE_USE_WEBSOCKET === 'true';
@@ -63,6 +72,7 @@ export default function LiveMapView({
   driverLng: initDriverLng,
   className = '',
   isDriverView = false,
+  extraMarkers = [],
 }: LiveMapViewProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
@@ -209,6 +219,26 @@ export default function LiveMapView({
       }
 
       // ── Add route line source ────────────────────────────────────
+      // ── Add extra markers (runner map overview) ──────────────────
+      // (bounds will be populated below)
+      const extraMarkerRefs: mapboxgl.Marker[] = [];
+      extraMarkers.forEach((em, idx) => {
+          const el = document.createElement('div');
+          const color = em.color || '#8B5CF6';
+          el.innerHTML = `
+            <div style="display:flex;flex-direction:column;align-items:center;">
+              <div style="background:${color};color:#fff;font-size:10px;font-weight:700;
+                padding:3px 8px;border-radius:12px;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);
+                white-space:nowrap;">${em.label || `#${idx + 1}`}</div>
+              <div style="width:2px;height:6px;background:${color};margin-top:-1px;"></div>
+            </div>`;
+          extraMarkerRefs.push(
+            new mapboxgl.Marker({ element: el, anchor: 'bottom' })
+              .setLngLat([em.lng, em.lat])
+              .addTo(map)
+          );
+      });
+
       map.addSource('route', {
         type: 'geojson',
         data: {
@@ -229,6 +259,7 @@ export default function LiveMapView({
       const bounds = new mapboxgl.LngLatBounds();
       if (vendorLat != null && vendorLng != null) bounds.extend([vendorLng, vendorLat]);
       if (deliveryLat != null && deliveryLng != null) bounds.extend([deliveryLng, deliveryLat]);
+      extraMarkers.forEach((em) => bounds.extend([em.lng, em.lat]));
       if (!bounds.isEmpty()) {
         map.fitBounds(bounds, { padding: 60, maxZoom: 15 });
       }

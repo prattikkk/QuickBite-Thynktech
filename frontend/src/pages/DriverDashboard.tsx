@@ -226,6 +226,40 @@ export default function DriverDashboard() {
     }
   };
 
+  // Alert customer handler
+  const [alertingOrder, setAlertingOrder] = useState<string | null>(null);
+  const handleAlertCustomer = async (orderId: string) => {
+    try {
+      setAlertingOrder(orderId);
+      await driverService.alertCustomer(orderId);
+      success('Customer has been notified!');
+    } catch (err: any) {
+      showError(err.message || 'Failed to alert customer');
+    } finally {
+      setAlertingOrder(null);
+    }
+  };
+
+  // Haversine distance helper (km)
+  const haversineKm = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
+    const R = 6371;
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLng = ((lng2 - lng1) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) ** 2 +
+      Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  };
+
+  // Bearing helper for compass navigation (degrees from north)
+  const bearingTo = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
+    const toRad = (d: number) => (d * Math.PI) / 180;
+    const dLng = toRad(lng2 - lng1);
+    const y = Math.sin(dLng) * Math.cos(toRad(lat2));
+    const x = Math.cos(toRad(lat1)) * Math.sin(toRad(lat2)) - Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(dLng);
+    return ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -349,22 +383,98 @@ export default function DriverDashboard() {
         {/* Assigned orders tab */}
         {tab === 'assigned' && (
           <>
+            {/* Runner Map View — overview of all assigned orders */}
+            {orders.length > 0 && locationState.lat && locationState.lng && (
+              <div className="bg-white rounded-lg shadow-md p-4 mb-4">
+                <h3 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                  <span>🗺️</span> All Assigned Orders Map
+                </h3>
+                <div className="h-64 rounded-lg overflow-hidden border border-gray-200">
+                  <LiveMapView
+                    orderId={orders[0]?.id || ''}
+                    driverLat={locationState.lat}
+                    driverLng={locationState.lng}
+                    isDriverView={true}
+                    className="h-full"
+                    extraMarkers={orders
+                      .filter((o) => o.deliveryAddress?.lat && o.deliveryAddress?.lng)
+                      .map((o) => ({
+                        lat: o.deliveryAddress.lat!,
+                        lng: o.deliveryAddress.lng!,
+                        label: `#${(o.orderNumber || o.id).substring(0, 8)}`,
+                        color: o.status === 'ENROUTE' ? '#EF4444' : o.status === 'PICKED_UP' ? '#3B82F6' : '#8B5CF6',
+                      }))}
+                  />
+                </div>
+              </div>
+            )}
+
             {orders.length === 0 ? (
               <div className="bg-white rounded-lg shadow-md p-12 text-center">
                 <p className="text-gray-600">No assigned orders</p>
               </div>
             ) : (
               <div className="space-y-4">
-                {orders.map((order) => (
+                {orders.map((order) => {
+                  const destLat = order.deliveryAddress?.lat;
+                  const destLng = order.deliveryAddress?.lng;
+                  const distKm =
+                    locationState.lat && locationState.lng && destLat && destLng
+                      ? haversineKm(locationState.lat, locationState.lng, destLat, destLng)
+                      : null;
+                  const bearing =
+                    locationState.lat && locationState.lng && destLat && destLng
+                      ? bearingTo(locationState.lat, locationState.lng, destLat, destLng)
+                      : null;
+
+                  return (
                   <div key={order.id} className="bg-white rounded-lg shadow-md p-6">
                     <div className="flex justify-between items-start mb-4">
-                      <div>
-                        <h3 className="text-lg font-bold">Order #{order.id}</h3>
-                        <p className="text-sm text-gray-600">{formatDateTime(order.createdAt)}</p>
+                      <div className="flex items-center gap-3">
+                        {/* Customer Photo */}
+                        {(order as any).customerAvatarUrl ? (
+                          <img
+                            src={(order as any).customerAvatarUrl}
+                            alt={order.customerName}
+                            className="w-10 h-10 rounded-full object-cover border-2 border-primary-200"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center text-sm font-bold text-primary-600 border-2 border-primary-200">
+                            {order.customerName?.charAt(0)?.toUpperCase() || 'C'}
+                          </div>
+                        )}
+                        <div>
+                          <h3 className="text-lg font-bold">Order #{order.orderNumber || order.id.substring(0, 8)}</h3>
+                          <p className="text-sm text-gray-600">
+                            {order.customerName}
+                            {distKm !== null && (
+                              <span className="ml-2 text-xs font-medium text-blue-600">
+                                📍 {distKm < 1 ? `${Math.round(distKm * 1000)}m` : `${distKm.toFixed(1)}km`} away
+                              </span>
+                            )}
+                          </p>
+                        </div>
                       </div>
-                      <span className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm font-medium">
-                        {order.status}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        {/* Compass Navigation */}
+                        {bearing !== null && ['PICKED_UP', 'ENROUTE'].includes(order.status) && (
+                          <div className="flex flex-col items-center" title={`${Math.round(bearing)}° from North`}>
+                            <div
+                              className="w-8 h-8 text-red-500"
+                              style={{ transform: `rotate(${bearing}deg)`, transition: 'transform 0.5s ease' }}
+                            >
+                              <svg viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 2l3 9h-6l3-9z" />
+                                <path d="M12 22l-3-9h6l-3 9z" opacity="0.3" />
+                              </svg>
+                            </div>
+                            <span className="text-[10px] text-gray-500">{Math.round(bearing)}°</span>
+                          </div>
+                        )}
+                        <span className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm font-medium">
+                          {order.status}
+                        </span>
+                      </div>
                     </div>
 
                     <div className="grid md:grid-cols-2 gap-4 mb-4">
@@ -407,6 +517,17 @@ export default function DriverDashboard() {
                         {formatCurrencyCompact(order.totalCents)}
                       </p>
                       <div className="flex gap-2">
+                        {/* Alert Customer Button */}
+                        {['PICKED_UP', 'ENROUTE'].includes(order.status) && (
+                          <button
+                            onClick={() => handleAlertCustomer(order.id)}
+                            disabled={alertingOrder === order.id}
+                            className="px-3 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 disabled:opacity-50 text-sm font-medium flex items-center gap-1"
+                            title="Notify customer you're arriving"
+                          >
+                            🔔 {alertingOrder === order.id ? 'Sending...' : 'Alert'}
+                          </button>
+                        )}
                         {(order.status === 'READY' || order.status === 'ASSIGNED') && (
                           <button
                             onClick={() => handlePickup(order.id)}
@@ -470,7 +591,8 @@ export default function DriverDashboard() {
                       )}
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </>

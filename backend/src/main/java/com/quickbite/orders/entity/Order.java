@@ -132,7 +132,18 @@ public class Order {
     @Builder.Default
     private Long vendorPayoutCents = 0L;
 
-    // ---- end Phase 4 ----
+    // ---- Phase 5: Delivery Type & Tipping ----
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "delivery_type", nullable = false, length = 20)
+    @Builder.Default
+    private DeliveryType deliveryType = DeliveryType.DELIVERY;
+
+    @Column(name = "tip_cents", nullable = false)
+    @Builder.Default
+    private Long tipCents = 0L;
+
+    // ---- end Phase 5 ----
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default

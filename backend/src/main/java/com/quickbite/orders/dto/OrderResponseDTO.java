@@ -76,6 +76,11 @@ public class OrderResponseDTO {
     private Long commissionCents;
     private Long vendorPayoutCents;
 
+    // Phase 5: Delivery type, tipping, customer avatar
+    private String deliveryType;
+    private Long tipCents;
+    private String customerAvatarUrl;
+
     @Data
     @Builder
     @NoArgsConstructor
