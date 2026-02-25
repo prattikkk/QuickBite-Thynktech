@@ -12,6 +12,8 @@ export interface OrderDTO {
   customerPhone: string;
   vendorId: string;
   vendorName: string;
+  vendorLat?: number;
+  vendorLng?: number;
   driverId?: string;
   driverName?: string;
   driverPhone?: string;
@@ -26,10 +28,12 @@ export interface OrderDTO {
   promoCode?: string;
   paymentMethod: string;
   paymentStatus: string;
+  providerPaymentId?: string;
   /** Stripe PaymentIntent client secret — only present if card/online payment is pending */
   paymentClientSecret?: string;
   specialInstructions?: string;
   cancellationReason?: string;
+  refundStatus?: string;
   scheduledTime?: string;
   createdAt: string;
   updatedAt: string;
@@ -75,6 +79,7 @@ export interface OrderCreateRequest {
   paymentMethod: PaymentMethod;
   specialInstructions?: string;
   promoCode?: string;
+  scheduledTime?: string;
 }
 
 export interface OrderItemCreateRequest {

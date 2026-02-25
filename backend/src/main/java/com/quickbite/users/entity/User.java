@@ -56,6 +56,17 @@ public class User {
     @Builder.Default
     private Boolean active = true;
 
+    @Column(name = "email_verified", nullable = false)
+    @Builder.Default
+    private Boolean emailVerified = false;
+
+    @Column(name = "failed_login_attempts", nullable = false)
+    @Builder.Default
+    private Integer failedLoginAttempts = 0;
+
+    @Column(name = "account_locked_until", columnDefinition = "timestamptz")
+    private OffsetDateTime accountLockedUntil;
+
     @CreationTimestamp
     @Column(name = "created_at", columnDefinition = "timestamptz", updatable = false)
     private OffsetDateTime createdAt;

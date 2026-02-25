@@ -48,6 +48,33 @@ public class SecurityConfig {
         http
             .csrf(AbstractHttpConfigurer::disable)
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+            .headers(headers -> headers
+                // HSTS - force HTTPS for 1 year, include subdomains
+                .httpStrictTransportSecurity(hsts -> hsts
+                    .includeSubDomains(true)
+                    .maxAgeInSeconds(31536000)
+                )
+                // Prevent clickjacking
+                .frameOptions(frame -> frame.deny())
+                // Prevent MIME-type sniffing
+                .contentTypeOptions(cto -> {})
+                // XSS protection
+                .xssProtection(xss -> xss.headerValue(
+                    org.springframework.security.web.header.writers.XXssProtectionHeaderWriter.HeaderValue.ENABLED_MODE_BLOCK
+                ))
+                // Content Security Policy
+                .contentSecurityPolicy(csp -> csp
+                    .policyDirectives("default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' ws: wss:; frame-ancestors 'none';")
+                )
+                // Referrer Policy
+                .referrerPolicy(referrer -> referrer
+                    .policy(org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN)
+                )
+                // Permissions Policy (disable camera, microphone, geolocation for embedded contexts)
+                .permissionsPolicy(permissions -> permissions
+                    .policy("camera=(), microphone=(), geolocation=(self)")
+                )
+            )
             .sessionManagement(session -> session
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
@@ -64,6 +91,9 @@ public class SecurityConfig {
                 .requestMatchers("/ws-native/**").permitAll()
                 // Payment webhook — called by Stripe, authenticated via HMAC signature (not JWT)
                 .requestMatchers(HttpMethod.POST, "/api/payments/webhook").permitAll()
+                // Public vendor reviews & rating
+                .requestMatchers(HttpMethod.GET, "/api/vendors/*/reviews").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/vendors/*/rating-summary").permitAll()
                 
                 // All other endpoints require authentication
                 .anyRequest().authenticated()

@@ -109,6 +109,23 @@ export default function MyOrders() {
                   </span>
                 </div>
 
+                {/* Scheduled order indicator */}
+                {order.scheduledTime && (
+                  <div className="flex items-center gap-1.5 mt-2 text-sm text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg w-fit ml-auto">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>Scheduled: {new Date(order.scheduledTime).toLocaleString()}</span>
+                  </div>
+                )}
+
+                {/* Refund status */}
+                {order.refundStatus && (
+                  <div className="mt-2 text-sm px-3 py-1 bg-purple-50 text-purple-700 rounded-lg w-fit ml-auto">
+                    {order.refundStatus === 'REFUNDED' ? '💰 Refunded' : order.refundStatus}
+                  </div>
+                )}
+
                 <div className="flex justify-between items-center pt-3 border-t">
                   <p className="text-sm text-gray-600">
                     {order.items.length} item{order.items.length !== 1 ? 's' : ''}

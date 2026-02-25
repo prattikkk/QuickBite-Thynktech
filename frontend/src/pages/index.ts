@@ -17,3 +17,5 @@ export { default as AdminHealth } from './AdminHealth';
 export { default as AdminManagement } from './AdminManagement';
 export { default as Favorites } from './Favorites';
 export { default as Profile } from './Profile';
+export { default as Notifications } from './Notifications';
+export { default as Settings } from './Settings';

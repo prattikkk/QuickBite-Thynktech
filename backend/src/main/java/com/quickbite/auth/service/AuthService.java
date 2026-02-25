@@ -14,6 +14,7 @@ import com.quickbite.users.entity.Role;
 import com.quickbite.users.entity.User;
 import com.quickbite.users.repository.RoleRepository;
 import com.quickbite.users.repository.UserRepository;
+import com.quickbite.sms.service.SmsDispatchService;
 import com.quickbite.vendors.entity.Vendor;
 import com.quickbite.vendors.repository.VendorRepository;
 import lombok.RequiredArgsConstructor;
@@ -48,6 +49,9 @@ public class AuthService {
     private final JwtTokenProvider jwtTokenProvider;
     private final AuthenticationManager authenticationManager;
     private final VendorRepository vendorRepository;
+    private final PasswordResetService passwordResetService;
+    private final com.quickbite.email.service.EmailDispatchService emailDispatchService;
+    private final SmsDispatchService smsDispatchService;
 
     /**
      * Register a new user.
@@ -95,6 +99,28 @@ public class AuthService {
             log.info("Auto-created vendor profile for user: {}", savedUser.getEmail());
         }
 
+        // Create email verification token (in production, this would be emailed)
+        String verificationToken = passwordResetService.createEmailVerificationToken(savedUser.getId());
+        log.info("Email verification token created for user: {} token: {}", savedUser.getEmail(), verificationToken);
+
+        // Dispatch welcome + verification emails (async, fire-and-forget)
+        try {
+            emailDispatchService.sendWelcomeEmail(savedUser.getEmail(), savedUser.getName());
+            emailDispatchService.sendEmailVerification(savedUser.getEmail(), savedUser.getName(), verificationToken);
+        } catch (Exception e) {
+            log.warn("Email dispatch failed during registration for {}: {}", savedUser.getEmail(), e.getMessage());
+        }
+
+        // Dispatch registration SMS if phone number was provided
+        if (savedUser.getPhone() != null && !savedUser.getPhone().isBlank()) {
+            try {
+                String verifyLink = emailDispatchService.buildVerifyLink(verificationToken);
+                smsDispatchService.sendRegistrationSms(savedUser.getPhone(), savedUser.getName(), verifyLink);
+            } catch (Exception e) {
+                log.warn("SMS dispatch failed during registration for {}: {}", savedUser.getEmail(), e.getMessage());
+            }
+        }
+
         // Generate tokens
         return generateAuthResponse(savedUser);
     }
@@ -104,11 +130,25 @@ public class AuthService {
      *
      * @param request login credentials
      * @return authentication response with tokens
-     * @throws AuthException if authentication fails
+     * @throws AuthException if authentication fails or account is locked
      */
-    @Transactional
+    @Transactional(noRollbackFor = AuthException.class)
     public AuthResponse login(LoginRequest request) {
         log.info("Login attempt for user: {}", request.getEmail());
+
+        // Load user first to check lockout status
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElse(null);
+
+        // Check if account is locked
+        if (user != null && user.getAccountLockedUntil() != null 
+                && user.getAccountLockedUntil().isAfter(OffsetDateTime.now())) {
+            long minutesRemaining = java.time.Duration.between(
+                OffsetDateTime.now(), user.getAccountLockedUntil()
+            ).toMinutes();
+            log.warn("Account locked for user: {} - {} minutes remaining", request.getEmail(), minutesRemaining);
+            throw new AuthException("Account is temporarily locked due to too many failed login attempts. Please try again in " + minutesRemaining + " minutes.");
+        }
 
         try {
             // Authenticate user
@@ -116,12 +156,22 @@ public class AuthService {
                     new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
             );
 
-            // Load user
-            User user = userRepository.findByEmail(request.getEmail())
-                    .orElseThrow(() -> new AuthException("User not found"));
+            // Reload user (in case it was null)
+            if (user == null) {
+                user = userRepository.findByEmail(request.getEmail())
+                        .orElseThrow(() -> new AuthException("User not found"));
+            }
 
             if (!user.getActive()) {
                 throw new AuthException("User account is deactivated");
+            }
+
+            // Reset failed login attempts on successful login
+            if (user.getFailedLoginAttempts() > 0) {
+                user.setFailedLoginAttempts(0);
+                user.setAccountLockedUntil(null);
+                userRepository.save(user);
+                log.info("Reset failed login attempts for user: {}", user.getEmail());
             }
 
             log.info("User authenticated successfully: {}", user.getEmail());
@@ -131,6 +181,24 @@ public class AuthService {
 
         } catch (AuthenticationException e) {
             log.warn("Authentication failed for user: {}", request.getEmail());
+            
+            // Increment failed login attempts
+            if (user != null) {
+                int attempts = user.getFailedLoginAttempts() + 1;
+                user.setFailedLoginAttempts(attempts);
+                
+                // Lock account for 15 minutes after 5 failed attempts
+                if (attempts >= 5) {
+                    user.setAccountLockedUntil(OffsetDateTime.now().plusMinutes(15));
+                    userRepository.save(user);
+                    log.warn("Account locked for user: {} after {} failed attempts", request.getEmail(), attempts);
+                    throw new AuthException("Account locked due to too many failed login attempts. Please try again in 15 minutes.");
+                } else {
+                    userRepository.save(user);
+                    log.warn("Failed login attempt {} for user: {}", attempts, request.getEmail());
+                }
+            }
+            
             throw new AuthException("Invalid email or password", e);
         }
     }

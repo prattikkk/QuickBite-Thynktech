@@ -6,7 +6,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { adminService } from '../services';
+import { adminService, paymentService } from '../services';
 import { TimelineEntry } from '../types';
 import { LoadingSpinner } from '../components';
 import { useToastStore } from '../store';
@@ -17,7 +17,14 @@ export default function AdminOrderTimeline() {
   const [entries, setEntries] = useState<TimelineEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const { error: showError } = useToastStore();
+  const { success: showSuccess, error: showError } = useToastStore();
+
+  // Refund modal state
+  const [showRefundModal, setShowRefundModal] = useState(false);
+  const [refundPaymentId, setRefundPaymentId] = useState('');
+  const [refundAmount, setRefundAmount] = useState('');
+  const [refundReason, setRefundReason] = useState('');
+  const [refunding, setRefunding] = useState(false);
 
   useEffect(() => {
     if (orderId) loadTimeline();
@@ -39,6 +46,32 @@ export default function AdminOrderTimeline() {
 
   if (loading) return <LoadingSpinner />;
 
+  const handleRefund = async () => {
+    if (!refundPaymentId.trim()) {
+      showError('Payment ID is required');
+      return;
+    }
+    try {
+      setRefunding(true);
+      await paymentService.refundPayment(
+        refundPaymentId.trim(),
+        refundAmount ? Math.round(parseFloat(refundAmount) * 100) : undefined,
+        refundReason || undefined
+      );
+      showSuccess('Refund processed successfully');
+      setShowRefundModal(false);
+      setRefundPaymentId('');
+      setRefundAmount('');
+      setRefundReason('');
+      // Reload timeline to show refund event
+      loadTimeline();
+    } catch (err: any) {
+      showError(err.message || 'Refund failed');
+    } finally {
+      setRefunding(false);
+    }
+  };
+
   if (error) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-12">
@@ -56,13 +89,84 @@ export default function AdminOrderTimeline() {
     <div className="max-w-3xl mx-auto px-4 py-8">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Order Timeline</h1>
-        <Link
-          to="/admin/dashboard"
-          className="text-sm text-primary-600 hover:text-primary-700"
-        >
-          &larr; Back to Admin
-        </Link>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowRefundModal(true)}
+            className="px-4 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition"
+          >
+            Issue Refund
+          </button>
+          <Link
+            to="/admin/dashboard"
+            className="text-sm text-primary-600 hover:text-primary-700"
+          >
+            &larr; Back to Admin
+          </Link>
+        </div>
       </div>
+
+      {/* Refund Modal */}
+      {showRefundModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-xl">
+            <h2 className="text-lg font-bold text-gray-900 mb-4">Issue Refund</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Provider Payment ID *
+                </label>
+                <input
+                  type="text"
+                  value={refundPaymentId}
+                  onChange={(e) => setRefundPaymentId(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  placeholder="pi_..."
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Amount (optional, in ₹ — leave blank for full refund)
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={refundAmount}
+                  onChange={(e) => setRefundAmount(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  placeholder="e.g. 150.00"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Reason
+                </label>
+                <textarea
+                  value={refundReason}
+                  onChange={(e) => setRefundReason(e.target.value)}
+                  rows={3}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  placeholder="Reason for refund..."
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                onClick={() => setShowRefundModal(false)}
+                className="px-4 py-2 text-sm text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleRefund}
+                disabled={refunding}
+                className="px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+              >
+                {refunding ? 'Processing...' : 'Confirm Refund'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <p className="text-sm text-gray-500 mb-6">
         Order <span className="font-mono font-medium text-gray-700">{orderId}</span>

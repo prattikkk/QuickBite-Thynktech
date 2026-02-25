@@ -108,6 +108,20 @@ export default defineConfig({
   define: {
     global: 'globalThis',
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Core vendor libraries
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          // State management + HTTP
+          'vendor-data': ['zustand', 'axios'],
+          // UI utilities
+          'vendor-stripe': ['@stripe/stripe-js', '@stripe/react-stripe-js'],
+        },
+      },
+    },
+  },
   server: {
     port: 5173,
     proxy: {

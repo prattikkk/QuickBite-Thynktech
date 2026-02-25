@@ -7,11 +7,13 @@ import { driverService, type DriverOrderSummary, type DriverProfileDTO } from '.
 import { OrderDTO } from '../types';
 import { LoadingSpinner } from '../components';
 import ProofCaptureModal from '../components/ProofCaptureModal';
+import ChatWindow from '../components/ChatWindow';
 import { formatCurrencyCompact, formatDateTime } from '../utils';
 import { useToastStore } from '../store';
 import { useDriverLocation } from '../hooks';
+import DriverRatings from '../components/DriverRatings';
 
-type Tab = 'assigned' | 'available' | 'history' | 'profile';
+type Tab = 'assigned' | 'available' | 'history' | 'ratings' | 'profile';
 
 export default function DriverDashboard() {
   const [orders, setOrders] = useState<OrderDTO[]>([]);
@@ -24,6 +26,7 @@ export default function DriverDashboard() {
   const [statusToggling, setStatusToggling] = useState(false);
   const [shiftLoading, setShiftLoading] = useState(false);
   const [proofOrderId, setProofOrderId] = useState<string | null>(null);
+  const [chatOrderId, setChatOrderId] = useState<string | null>(null);
   const { success, error: showError } = useToastStore();
 
   // Shift-based live location tracking
@@ -301,6 +304,7 @@ export default function DriverDashboard() {
             { key: 'assigned' as Tab, label: 'My Orders', count: orders.length },
             { key: 'available' as Tab, label: 'Available', count: availableOrders.length },
             { key: 'history' as Tab, label: 'History', count: null },
+            { key: 'ratings' as Tab, label: 'Ratings', count: null },
             { key: 'profile' as Tab, label: 'Profile', count: null },
           ]).map(({ key, label, count }) => (
             <button
@@ -388,6 +392,39 @@ export default function DriverDashboard() {
                           </button>
                         )}
                       </div>
+                    </div>
+
+                    {/* Chat with Customer */}
+                    <div className="mt-4 pt-4 border-t">
+                      {chatOrderId === order.id ? (
+                        <div>
+                          <div className="flex justify-between items-center mb-2">
+                            <h4 className="font-semibold text-gray-900">Chat with Customer</h4>
+                            <button
+                              onClick={() => setChatOrderId(null)}
+                              className="text-sm text-gray-500 hover:text-gray-700"
+                            >
+                              Close
+                            </button>
+                          </div>
+                          <ChatWindow
+                            orderId={order.id}
+                            otherUserId={order.customerId}
+                            otherUserName={order.customerName}
+                            roomType="CUSTOMER_DRIVER"
+                          />
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setChatOrderId(order.id)}
+                          className="w-full py-2 px-4 bg-blue-50 text-blue-600 font-medium rounded-lg border border-blue-200 hover:bg-blue-100 transition-colors flex items-center justify-center gap-2"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                          </svg>
+                          Chat with {order.customerName}
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -483,6 +520,11 @@ export default function DriverDashboard() {
               </div>
             )}
           </>
+        )}
+
+        {/* Ratings tab */}
+        {tab === 'ratings' && profile && (
+          <DriverRatings driverId={profile.id || ''} />
         )}
 
         {/* Profile tab */}

@@ -14,3 +14,5 @@ export { default as favoriteService } from './favorite.service';
 export { default as notificationService } from './notification.service';
 export { default as promoService } from './promo.service';
 export { default as userService } from './user.service';
+export { default as reviewService } from './review.service';
+export { default as deviceService } from './device.service';

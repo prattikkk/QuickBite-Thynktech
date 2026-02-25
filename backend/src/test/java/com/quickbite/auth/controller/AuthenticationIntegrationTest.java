@@ -270,4 +270,80 @@ class AuthenticationIntegrationTest {
                         .content(objectMapper.writeValueAsString(logoutRequest)))
                 .andExpect(status().isUnauthorized());
     }
+
+    @Test
+    void testAccountLockoutAfterFailedAttempts() throws Exception {
+        LoginRequest request = LoginRequest.builder()
+                .email("test@quickbite.test")
+                .password("WrongPassword@123")
+                .build();
+
+        // Make 4 failed attempts - should not lock yet
+        for (int i = 0; i < 4; i++) {
+            mockMvc.perform(post("/api/auth/login")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(jsonPath("$.success").value(false))
+                    .andExpect(jsonPath("$.message").value(containsString("Invalid email or password")));
+        }
+
+        // 5th failed attempt should lock the account
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").value(containsString("locked")));
+
+        // Even with correct password, should still be locked
+        LoginRequest correctRequest = LoginRequest.builder()
+                .email("test@quickbite.test")
+                .password("Password@123")
+                .build();
+
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(correctRequest)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").value(containsString("locked")));
+    }
+
+    @Test
+    void testFailedAttemptsResetOnSuccessfulLogin() throws Exception {
+        LoginRequest wrongRequest = LoginRequest.builder()
+                .email("test@quickbite.test")
+                .password("WrongPassword@123")
+                .build();
+
+        // Make 3 failed attempts
+        for (int i = 0; i < 3; i++) {
+            mockMvc.perform(post("/api/auth/login")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(wrongRequest)))
+                    .andExpect(status().isUnauthorized());
+        }
+
+        // Successful login should reset counter
+        LoginRequest correctRequest = LoginRequest.builder()
+                .email("test@quickbite.test")
+                .password("Password@123")
+                .build();
+
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(correctRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+
+        // Now make 4 more failed attempts - they should start from 0 again
+        for (int i = 0; i < 4; i++) {
+            mockMvc.perform(post("/api/auth/login")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(wrongRequest)))
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(jsonPath("$.message").value(containsString("Invalid email or password")));
+        }
+    }
 }

@@ -158,4 +158,35 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
         @Param("startDate") OffsetDateTime startDate,
         @Param("endDate") OffsetDateTime endDate
     );
+
+    // ── Fraud velocity queries ──
+
+    /**
+     * Count orders by customer created after a given time.
+     */
+    long countByCustomerIdAndCreatedAtAfter(UUID customerId, OffsetDateTime after);
+
+    /**
+     * Sum total cents spent by a customer after a given time.
+     */
+    @Query("SELECT COALESCE(SUM(o.totalCents), 0) FROM Order o " +
+           "WHERE o.customer.id = :customerId AND o.createdAt > :after")
+    Long sumTotalCentsByCustomerIdAndCreatedAtAfter(
+        @Param("customerId") UUID customerId,
+        @Param("after") OffsetDateTime after
+    );
+
+    /**
+     * Count orders by customer, status, and created after a given time.
+     */
+    long countByCustomerIdAndStatusAndCreatedAtAfter(
+        UUID customerId, OrderStatus status, OffsetDateTime after
+    );
+
+    // ── Data retention queries ──
+
+    /**
+     * Count orders older than a given date.
+     */
+    long countByCreatedAtBefore(OffsetDateTime before);
 }

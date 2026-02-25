@@ -17,3 +17,7 @@ export { default as ProofCaptureModal } from './ProofCaptureModal';
 export { default as DeliveryProofDisplay } from './DeliveryProofDisplay';
 export { default as PWAInstallPrompt } from './PWAInstallPrompt';
 export { default as OfflineBanner } from './OfflineBanner';
+export { default as StarRating } from './StarRating';
+export { default as ReviewForm } from './ReviewForm';
+export { default as VendorReviews } from './VendorReviews';
+export { default as MapView } from './MapView';

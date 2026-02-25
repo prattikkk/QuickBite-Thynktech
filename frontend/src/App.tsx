@@ -1,37 +1,56 @@
 /**
  * Main App component with routing
+ * Uses React.lazy for route-level code splitting
  */
 
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { useEffect } from 'react';
+import { useEffect, lazy, Suspense } from 'react';
 import { useAuthStore } from './store';
-import { Header, Footer, Toast, ProtectedRoute, RoleBasedRedirect, ErrorBoundary, PWAInstallPrompt, OfflineBanner } from './components';
+import { deviceService } from './services';
+import { Header, Footer, Toast, ProtectedRoute, RoleBasedRedirect, ErrorBoundary, PWAInstallPrompt, OfflineBanner, LoadingSpinner } from './components';
 
-// Pages
-import Login from './pages/Login';
-import Register from './pages/Register';
-import VendorList from './pages/VendorList';
-import VendorDetail from './pages/VendorDetail';
-import Cart from './pages/Cart';
-import Checkout from './pages/Checkout';
-import OrderTrack from './pages/OrderTrack';
-import MyOrders from './pages/MyOrders';
-import VendorDashboard from './pages/VendorDashboard';
-import DriverDashboard from './pages/DriverDashboard';
-import AdminOrderTimeline from './pages/AdminOrderTimeline';
-import AdminHealth from './pages/AdminHealth';
-import AdminManagement from './pages/AdminManagement';
-import Favorites from './pages/Favorites';
-import Profile from './pages/Profile';
+// Lazy-loaded pages for code splitting
+const Login = lazy(() => import('./pages/Login'));
+const Register = lazy(() => import('./pages/Register'));
+const VendorList = lazy(() => import('./pages/VendorList'));
+const VendorDetail = lazy(() => import('./pages/VendorDetail'));
+const Cart = lazy(() => import('./pages/Cart'));
+const Checkout = lazy(() => import('./pages/Checkout'));
+const OrderTrack = lazy(() => import('./pages/OrderTrack'));
+const MyOrders = lazy(() => import('./pages/MyOrders'));
+const VendorDashboard = lazy(() => import('./pages/VendorDashboard'));
+const DriverDashboard = lazy(() => import('./pages/DriverDashboard'));
+const AdminOrderTimeline = lazy(() => import('./pages/AdminOrderTimeline'));
+const AdminHealth = lazy(() => import('./pages/AdminHealth'));
+const AdminManagement = lazy(() => import('./pages/AdminManagement'));
+const Favorites = lazy(() => import('./pages/Favorites'));
+const Profile = lazy(() => import('./pages/Profile'));
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
+const ResetPassword = lazy(() => import('./pages/ResetPassword'));
+const VerifyEmail = lazy(() => import('./pages/VerifyEmail'));
+const Notifications = lazy(() => import('./pages/Notifications'));
+const AdminReporting = lazy(() => import('./pages/AdminReporting'));
+const Settings = lazy(() => import('./pages/Settings'));
+const AdminRefunds = lazy(() => import('./pages/AdminRefunds'));
 
 function App() {
   const loadFromStorage = useAuthStore((state) => state.loadFromStorage);
+  const user = useAuthStore((state) => state.user);
 
   // Load auth from localStorage on app start
   useEffect(() => {
     loadFromStorage();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Register device for push notifications when user is authenticated
+  useEffect(() => {
+    if (user) {
+      deviceService.requestAndRegister().catch(() => {
+        // silent — push is optional
+      });
+    }
+  }, [user]);
 
   return (
     <BrowserRouter>
@@ -40,12 +59,16 @@ function App() {
         <Header />
         <Toast />
         
-        <main className="flex-1">
+        <main id="main-content" className="flex-1">
           <ErrorBoundary>
+          <Suspense fallback={<div className="flex justify-center items-center min-h-[50vh]"><LoadingSpinner size="lg" /></div>}>
           <Routes>
             {/* Public routes */}
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/verify-email" element={<VerifyEmail />} />
             <Route
               path="/vendors"
               element={
@@ -112,6 +135,14 @@ function App() {
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/notifications"
+              element={
+                <ProtectedRoute>
+                  <Notifications />
+                </ProtectedRoute>
+              }
+            />
 
             {/* Vendor routes */}
             <Route
@@ -158,6 +189,32 @@ function App() {
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/admin/reports"
+              element={
+                <ProtectedRoute requiredRole="ADMIN">
+                  <AdminReporting />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/refunds"
+              element={
+                <ProtectedRoute requiredRole="ADMIN">
+                  <AdminRefunds />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Settings */}
+            <Route
+              path="/settings"
+              element={
+                <ProtectedRoute>
+                  <Settings />
+                </ProtectedRoute>
+              }
+            />
 
             {/* Default route - redirect based on role */}
             <Route path="/" element={<RoleBasedRedirect />} />
@@ -165,6 +222,7 @@ function App() {
             {/* 404 */}
             <Route path="*" element={<NotFound />} />
           </Routes>
+          </Suspense>
           </ErrorBoundary>
         </main>
 

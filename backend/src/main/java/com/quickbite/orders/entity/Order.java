@@ -122,7 +122,17 @@ public class Order {
     @Column(name = "delivery_proof_id", columnDefinition = "uuid")
     private UUID deliveryProofId;
 
-    // ---- end Phase 3 ----
+    // ---- Phase 4: Commission & Payout ----
+
+    @Column(name = "commission_cents")
+    @Builder.Default
+    private Long commissionCents = 0L;
+
+    @Column(name = "vendor_payout_cents")
+    @Builder.Default
+    private Long vendorPayoutCents = 0L;
+
+    // ---- end Phase 4 ----
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default

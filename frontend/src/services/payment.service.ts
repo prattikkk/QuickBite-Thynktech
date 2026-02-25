@@ -32,6 +32,23 @@ export const paymentService = {
     const response = await api.get<any, PaymentResponse>(`/payments/${paymentId}`);
     return response;
   },
+
+  /**
+   * Refund a payment (ADMIN / VENDOR only)
+   * POST /payments/refund
+   */
+  refundPayment: async (
+    providerPaymentId: string,
+    amountCents?: number,
+    reason?: string
+  ): Promise<any> => {
+    const response = await api.post('/payments/refund', {
+      providerPaymentId,
+      amountCents,
+      reason,
+    });
+    return response;
+  },
 };
 
 export default paymentService;

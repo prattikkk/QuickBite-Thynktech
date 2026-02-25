@@ -9,6 +9,7 @@ export default function Register() {
   const navigate = useNavigate();
   const { register: registerUser } = useAuth();
   const { error: showError } = useToastStore();
+  const [registeredEmail, setRegisteredEmail] = useState<string | null>(null);
   
   const [formData, setFormData] = useState({
     email: '',
@@ -78,14 +79,18 @@ export default function Register() {
         phone: formData.phoneNumber,
         roleName: formData.role
       });
-      // Redirect based on role — user is already authenticated
-      if (user.role === 'VENDOR') {
-        navigate('/vendor/dashboard');
-      } else if (user.role === 'DRIVER') {
-        navigate('/driver/dashboard');
-      } else {
-        navigate('/vendors');
-      }
+      // Show email verification notice before redirecting
+      setRegisteredEmail(formData.email);
+      // Auto-redirect after 5 seconds
+      setTimeout(() => {
+        if (user.role === 'VENDOR') {
+          navigate('/vendor/dashboard');
+        } else if (user.role === 'DRIVER') {
+          navigate('/driver/dashboard');
+        } else {
+          navigate('/vendors');
+        }
+      }, 5000);
     } catch (err: any) {
       showError(err.message || 'Registration failed. Please try again.');
     } finally {
@@ -96,6 +101,31 @@ export default function Register() {
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-12">
       <div className="max-w-md w-full">
+        {/* Email verification notice after successful registration */}
+        {registeredEmail ? (
+          <div className="bg-white py-8 px-6 shadow rounded-lg text-center">
+            <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+              <svg className="w-8 h-8 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Check your email</h2>
+            <p className="text-gray-600 mb-4">
+              We've sent a verification email to <strong>{registeredEmail}</strong>.
+              Please verify your email to unlock all features.
+            </p>
+            <p className="text-sm text-gray-500 mb-6">
+              You'll be redirected automatically in a few seconds...
+            </p>
+            <button
+              onClick={() => navigate('/vendors')}
+              className="text-primary-600 hover:text-primary-700 font-medium text-sm"
+            >
+              Continue to app now &rarr;
+            </button>
+          </div>
+        ) : (
+        <>
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-primary-600 mb-2">QuickBite</h1>
           <h2 className="text-2xl font-semibold text-gray-900">Create your account</h2>
@@ -284,6 +314,8 @@ export default function Register() {
             </button>
           </form>
         </div>
+        </>
+        )}
       </div>
     </div>
   );

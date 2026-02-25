@@ -22,6 +22,8 @@ public class PromoCodeDTO {
     private Long minOrderCents;
     private Long maxDiscountCents;
     private Integer maxUses;
+    private Integer maxUsesPerUser;
+    private Boolean firstOrderOnly;
     private Integer currentUses;
     private OffsetDateTime validFrom;
     private OffsetDateTime validUntil;

@@ -2,12 +2,15 @@ package com.quickbite.promotions.service;
 
 import com.quickbite.common.feature.FeatureFlagService;
 import com.quickbite.orders.exception.BusinessException;
+import com.quickbite.orders.repository.OrderRepository;
 import com.quickbite.promotions.dto.PromoCodeDTO;
 import com.quickbite.promotions.dto.PromoCreateRequest;
 import com.quickbite.promotions.dto.PromoValidateResponse;
 import com.quickbite.promotions.entity.DiscountType;
 import com.quickbite.promotions.entity.PromoCode;
+import com.quickbite.promotions.entity.PromoUsage;
 import com.quickbite.promotions.repository.PromoCodeRepository;
+import com.quickbite.promotions.repository.PromoUsageRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -20,6 +23,8 @@ import java.util.stream.Collectors;
 
 /**
  * Promo code engine — validate, calculate discount, admin CRUD.
+ * Supports FIXED, PERCENT, and BOGO discount types.
+ * Enforces per-user usage limits and first-order-only restrictions.
  */
 @Slf4j
 @Service
@@ -27,15 +32,26 @@ import java.util.stream.Collectors;
 public class PromoCodeService {
 
     private final PromoCodeRepository promoCodeRepository;
+    private final PromoUsageRepository promoUsageRepository;
+    private final OrderRepository orderRepository;
     private final FeatureFlagService featureFlagService;
 
     // ========== Customer-facing ==========
 
     /**
      * Validate a promo code against a subtotal and return computed discount.
+     * Overload for backward compat (without user context).
      */
     @Transactional(readOnly = true)
     public PromoValidateResponse validatePromo(String code, long subtotalCents) {
+        return validatePromo(code, subtotalCents, null);
+    }
+
+    /**
+     * Validate a promo code with per-user checks.
+     */
+    @Transactional(readOnly = true)
+    public PromoValidateResponse validatePromo(String code, long subtotalCents, UUID userId) {
         if (!featureFlagService.isEnabled("promo-engine")) {
             return PromoValidateResponse.builder()
                     .valid(false).code(code).message("Promo codes are currently disabled").build();
@@ -64,10 +80,32 @@ public class PromoCodeService {
                     .valid(false).code(code).message("This promo code has expired").build();
         }
 
-        // Usage limit
+        // Global usage limit
         if (promo.getMaxUses() != null && promo.getCurrentUses() >= promo.getMaxUses()) {
             return PromoValidateResponse.builder()
                     .valid(false).code(code).message("This promo code has reached its usage limit").build();
+        }
+
+        // ── Per-user usage limit ──
+        if (userId != null && promo.getMaxUsesPerUser() != null) {
+            long userUses = promoUsageRepository.countByUserIdAndPromoId(userId, promo.getId());
+            if (userUses >= promo.getMaxUsesPerUser()) {
+                return PromoValidateResponse.builder()
+                        .valid(false).code(code)
+                        .message("You have already used this promo code the maximum number of times")
+                        .build();
+            }
+        }
+
+        // ── First-order-only check ──
+        if (Boolean.TRUE.equals(promo.getFirstOrderOnly()) && userId != null) {
+            Long orderCount = orderRepository.countByCustomerId(userId);
+            if (orderCount != null && orderCount > 0) {
+                return PromoValidateResponse.builder()
+                        .valid(false).code(code)
+                        .message("This promo is only valid for your first order")
+                        .build();
+            }
         }
 
         // Minimum order
@@ -96,6 +134,14 @@ public class PromoCodeService {
      */
     @Transactional
     public long applyPromo(String code, long subtotalCents) {
+        return applyPromo(code, subtotalCents, null, null);
+    }
+
+    /**
+     * Apply a promo code with per-user tracking.
+     */
+    @Transactional
+    public long applyPromo(String code, long subtotalCents, UUID userId, UUID orderId) {
         if (!featureFlagService.isEnabled("promo-engine")) {
             return 0;
         }
@@ -103,7 +149,7 @@ public class PromoCodeService {
         PromoCode promo = promoCodeRepository.findByCodeIgnoreCase(code.trim())
                 .orElseThrow(() -> new BusinessException("Invalid promo code: " + code));
 
-        PromoValidateResponse result = validatePromo(code, subtotalCents);
+        PromoValidateResponse result = validatePromo(code, subtotalCents, userId);
         if (!result.isValid()) {
             throw new BusinessException(result.getMessage());
         }
@@ -111,22 +157,40 @@ public class PromoCodeService {
         promo.incrementUses();
         promoCodeRepository.save(promo);
 
-        log.info("Promo '{}' applied — discount {} cents on subtotal {} cents",
-                promo.getCode(), result.getDiscountCents(), subtotalCents);
+        // Track per-user usage
+        if (userId != null) {
+            PromoUsage usage = PromoUsage.builder()
+                    .userId(userId)
+                    .promoId(promo.getId())
+                    .orderId(orderId)
+                    .build();
+            promoUsageRepository.save(usage);
+        }
+
+        log.info("Promo '{}' applied — discount {} cents on subtotal {} cents (user: {})",
+                promo.getCode(), result.getDiscountCents(), subtotalCents, userId);
 
         return result.getDiscountCents();
     }
 
     /**
      * Calculate discount amount in cents.
+     * Supports FIXED, PERCENT, and BOGO discount types.
      */
     public long calculateDiscount(PromoCode promo, long subtotalCents) {
         long discount;
-        if (promo.getDiscountType() == DiscountType.FIXED) {
-            discount = promo.getDiscountValue();
-        } else {
-            // PERCENT: discountValue is in basis points (1500 = 15%)
-            discount = subtotalCents * promo.getDiscountValue() / 10_000;
+        switch (promo.getDiscountType()) {
+            case FIXED -> discount = promo.getDiscountValue();
+            case PERCENT -> {
+                // discountValue in basis points (1500 = 15%)
+                discount = subtotalCents * promo.getDiscountValue() / 10_000;
+            }
+            case BOGO -> {
+                // BOGO: discount equals the value of the cheapest qualifying item
+                // For simplicity, use discountValue as the free-item price in cents
+                discount = promo.getDiscountValue() != null ? promo.getDiscountValue() : 0;
+            }
+            default -> discount = 0;
         }
         // Apply cap
         if (promo.getMaxDiscountCents() != null && discount > promo.getMaxDiscountCents()) {
@@ -216,6 +280,8 @@ public class PromoCodeService {
                 .minOrderCents(p.getMinOrderCents())
                 .maxDiscountCents(p.getMaxDiscountCents())
                 .maxUses(p.getMaxUses())
+                .maxUsesPerUser(p.getMaxUsesPerUser())
+                .firstOrderOnly(p.getFirstOrderOnly())
                 .currentUses(p.getCurrentUses())
                 .validFrom(p.getValidFrom())
                 .validUntil(p.getValidUntil())

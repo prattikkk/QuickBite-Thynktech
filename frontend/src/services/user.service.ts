@@ -11,6 +11,7 @@ export interface UserProfile {
   phone: string | null;
   role: string;
   active: boolean;
+  emailVerified: boolean;
   createdAt: string;
 }
 

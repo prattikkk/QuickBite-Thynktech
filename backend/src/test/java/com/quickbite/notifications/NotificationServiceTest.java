@@ -36,6 +36,7 @@ class NotificationServiceTest {
 
     @Mock private NotificationRepository notificationRepository;
     @Mock private UserRepository userRepository;
+    @Mock private com.quickbite.push.service.PushNotificationService pushNotificationService;
 
     private NotificationService notificationService;
 
@@ -44,7 +45,7 @@ class NotificationServiceTest {
 
     @BeforeEach
     void setUp() {
-        notificationService = new NotificationService(notificationRepository, userRepository);
+        notificationService = new NotificationService(notificationRepository, userRepository, pushNotificationService);
 
         userId = UUID.randomUUID();
         user = User.builder()

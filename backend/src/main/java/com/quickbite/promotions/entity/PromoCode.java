@@ -66,6 +66,19 @@ public class PromoCode {
     @Builder.Default
     private Boolean active = true;
 
+    /** Maximum number of times a single user can use this promo. Null = unlimited. */
+    @Column(name = "max_uses_per_user")
+    private Integer maxUsesPerUser;
+
+    /** BOGO: the free menu item ID given when this promo is applied. */
+    @Column(name = "bogo_item_id", columnDefinition = "uuid")
+    private UUID bogoItemId;
+
+    /** If true, this promo can only be used on a customer's first order. */
+    @Column(name = "first_order_only", nullable = false)
+    @Builder.Default
+    private Boolean firstOrderOnly = false;
+
     @CreationTimestamp
     @Column(name = "created_at", columnDefinition = "timestamptz", updatable = false)
     private OffsetDateTime createdAt;

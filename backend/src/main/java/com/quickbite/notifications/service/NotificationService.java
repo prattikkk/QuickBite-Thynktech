@@ -1,10 +1,12 @@
 package com.quickbite.notifications.service;
 
+import com.quickbite.email.service.EmailDispatchService;
 import com.quickbite.notifications.dto.NotificationDTO;
 import com.quickbite.notifications.entity.Notification;
 import com.quickbite.notifications.entity.NotificationType;
 import com.quickbite.notifications.repository.NotificationRepository;
 import com.quickbite.orders.exception.BusinessException;
+import com.quickbite.push.service.PushNotificationService;
 import com.quickbite.users.entity.User;
 import com.quickbite.users.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +21,7 @@ import java.util.UUID;
 
 /**
  * Service for creating and managing in-app notifications.
+ * Also dispatches push notifications when a notification is created.
  */
 @Slf4j
 @Service
@@ -27,9 +30,10 @@ public class NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
+    private final PushNotificationService pushNotificationService;
 
     /**
-     * Create a notification for a user.
+     * Create a notification for a user, and dispatch push notification.
      */
     @Transactional
     public NotificationDTO createNotification(UUID userId, NotificationType type,
@@ -47,6 +51,15 @@ public class NotificationService {
 
         notification = notificationRepository.save(notification);
         log.info("Notification created for user {}: {}", userId, title);
+
+        // Dispatch push notification (async, fire-and-forget)
+        try {
+            pushNotificationService.sendPushToUser(userId, title, message,
+                    refId != null ? refId.toString() : null);
+        } catch (Exception e) {
+            log.warn("Push dispatch failed for user {}: {}", userId, e.getMessage());
+        }
+
         return toDTO(notification);
     }
 

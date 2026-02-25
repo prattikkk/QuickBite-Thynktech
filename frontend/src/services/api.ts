@@ -24,6 +24,7 @@ const api: AxiosInstance = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true, // Send cookies (including HttpOnly refreshToken) with every request
 });
 
 // Request interceptor to attach JWT token and idempotency key
@@ -67,24 +68,19 @@ api.interceptors.response.use(
   async (error: AxiosError<any>) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
-    // Handle 401 Unauthorized - attempt token refresh
+    // Handle 401 Unauthorized - clear session and redirect to login silently
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
-
-      try {
-        // TODO: Implement refresh token mechanism when backend supports it
-        // For now, just redirect to login
-        localStorage.removeItem('quickbite_token');
-        localStorage.removeItem('quickbite_auth');
+      localStorage.removeItem('quickbite_token');
+      localStorage.removeItem('quickbite_auth');
+      // Only redirect when not already on the login page
+      if (!window.location.pathname.startsWith('/login')) {
         window.location.href = '/login';
-        return Promise.reject(error);
-      } catch (refreshError) {
-        // Refresh failed - redirect to login
-        localStorage.removeItem('quickbite_token');
-        localStorage.removeItem('quickbite_auth');
-        window.location.href = '/login';
-        return Promise.reject(refreshError);
       }
+      // Reject with a silent error so components don't show an error toast
+      const silent = new Error('SESSION_EXPIRED') as any;
+      silent.silent = true;
+      return Promise.reject(silent);
     }
 
     // Format error for consistent handling

@@ -1,4 +1,4 @@
-# Phase 5 — Mobile Wrapper Readiness
+ Phase 5 — Mobile Wrapper Readiness
 
 ## Overview
 

@@ -2,12 +2,14 @@ package com.quickbite.promotions;
 
 import com.quickbite.common.feature.FeatureFlagService;
 import com.quickbite.orders.exception.BusinessException;
+import com.quickbite.orders.repository.OrderRepository;
 import com.quickbite.promotions.dto.PromoCodeDTO;
 import com.quickbite.promotions.dto.PromoCreateRequest;
 import com.quickbite.promotions.dto.PromoValidateResponse;
 import com.quickbite.promotions.entity.DiscountType;
 import com.quickbite.promotions.entity.PromoCode;
 import com.quickbite.promotions.repository.PromoCodeRepository;
+import com.quickbite.promotions.repository.PromoUsageRepository;
 import com.quickbite.promotions.service.PromoCodeService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -32,6 +34,8 @@ import static org.mockito.Mockito.*;
 class PromoCodeServiceTest {
 
     @Mock private PromoCodeRepository promoCodeRepository;
+    @Mock private PromoUsageRepository promoUsageRepository;
+    @Mock private OrderRepository orderRepository;
     @Mock private FeatureFlagService featureFlagService;
 
     private PromoCodeService promoCodeService;
@@ -41,7 +45,7 @@ class PromoCodeServiceTest {
 
     @BeforeEach
     void setUp() {
-        promoCodeService = new PromoCodeService(promoCodeRepository, featureFlagService);
+        promoCodeService = new PromoCodeService(promoCodeRepository, promoUsageRepository, orderRepository, featureFlagService);
 
         percentPromo = PromoCode.builder()
                 .id(UUID.randomUUID())

@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="UTF-8"/></head>
+<body style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;background:#f9fafb;">
+<div style="background:#fff;border-radius:8px;padding:32px;border:1px solid #e5e7eb;">
+    <div style="text-align:center;margin-bottom:24px;">
+        <h1 style="color:#f97316;font-size:28px;margin:0;">🍔 QuickBite</h1>
+    </div>
+    <h2 style="color:#1f2937;">Verify Your Email</h2>
+    <p style="color:#4b5563;line-height:1.6;">
+        Hi <span th:text="${userName}">User</span>, please verify your email address by clicking the button below:
+    </p>
+    <div style="text-align:center;margin:24px 0;">
+        <a th:href="${verifyLink}" style="display:inline-block;padding:12px 32px;background:#22c55e;color:#fff;text-decoration:none;border-radius:6px;font-weight:600;">Verify Email</a>
+    </div>
+    <p style="color:#6b7280;font-size:14px;">This link expires in 24 hours.</p>
+    <p style="color:#9ca3af;font-size:12px;text-align:center;">QuickBite — Delivered fast, every time.</p>
+</div>
+</body>
+</html>

@@ -184,6 +184,11 @@ export default function VendorList() {
                       <span className="ml-1 text-sm font-medium text-gray-700">
                         {vendor.rating.toFixed(1)}
                       </span>
+                      {vendor.reviewCount > 0 && (
+                        <span className="ml-1 text-sm text-gray-500">
+                          ({vendor.reviewCount} {vendor.reviewCount === 1 ? 'review' : 'reviews'})
+                        </span>
+                      )}
                     </div>
                   )}
 

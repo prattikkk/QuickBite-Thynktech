@@ -104,6 +104,18 @@ class OrderServiceTest {
     @Mock
     private EtaService etaService;
 
+    @Mock
+    private com.quickbite.email.service.EmailDispatchService emailDispatchService;
+
+    @Mock
+    private com.quickbite.sms.service.SmsDispatchService smsDispatchService;
+
+    @Mock
+    private com.quickbite.orders.service.OrderFraudService orderFraudService;
+
+    @Mock
+    private com.quickbite.vendors.service.VendorCommissionService vendorCommissionService;
+
     private OrderService orderService;
 
     private UUID customerId;
@@ -126,6 +138,8 @@ class OrderServiceTest {
                 driverAssignmentService, orderMapper, orderUpdatePublisher,
                 orderStateMachine, eventTimelineService,
                 promoCodeService, notificationService, etaService,
+                emailDispatchService, smsDispatchService,
+                orderFraudService, vendorCommissionService,
                 new SimpleMeterRegistry());
 
         customerId = UUID.randomUUID();
@@ -214,6 +228,10 @@ class OrderServiceTest {
         when(menuItemRepository.findById(menuItemId)).thenReturn(Optional.of(menuItem));
         when(paymentService.createPaymentIntent(any(), anyLong(), eq("INR"))).thenReturn(payment);
         when(orderMapper.toResponseDTO(any(Order.class))).thenReturn(new OrderResponseDTO());
+        when(orderFraudService.checkOrderCreation(any(), anyLong()))
+                .thenReturn(com.quickbite.orders.service.OrderFraudService.FraudCheckResult.safe());
+        when(vendorCommissionService.calculateCommission(any(), anyLong()))
+                .thenReturn(java.util.Map.of("commissionCents", 15000L, "vendorPayoutCents", 85000L));
 
         ArgumentCaptor<Order> orderCaptor = ArgumentCaptor.forClass(Order.class);
         when(orderRepository.save(orderCaptor.capture())).thenAnswer(inv -> {

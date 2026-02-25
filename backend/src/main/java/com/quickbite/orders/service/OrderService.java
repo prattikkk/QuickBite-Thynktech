@@ -27,11 +27,15 @@ import com.quickbite.vendors.repository.MenuItemRepository;
 import com.quickbite.promotions.service.PromoCodeService;
 import com.quickbite.notifications.service.NotificationService;
 import com.quickbite.notifications.entity.NotificationType;
+import com.quickbite.email.service.EmailDispatchService;
+import com.quickbite.sms.service.SmsDispatchService;
+import com.quickbite.vendors.service.VendorCommissionService;
 import com.quickbite.websocket.OrderUpdatePublisher;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -63,11 +67,22 @@ public class OrderService {
     private final PromoCodeService promoCodeService;
     private final NotificationService notificationService;
     private final EtaService etaService;
+    private final EmailDispatchService emailDispatchService;
+    private final SmsDispatchService smsDispatchService;
+    private final OrderFraudService orderFraudService;
+    private final VendorCommissionService vendorCommissionService;
 
     // Metrics
     private final Counter orderCreatedCounter;
     private final Counter orderTransitionCounter;
     private final Timer orderCreateTimer;
+
+    // Configurable tax and delivery fee (no longer hardcoded)
+    @Value("${order.tax-rate:0.05}")
+    private double taxRate;
+
+    @Value("${order.delivery-fee-cents:5000}")
+    private long deliveryFeeCents;
 
     public OrderService(OrderRepository orderRepository,
                         MenuItemRepository menuItemRepository,
@@ -83,6 +98,10 @@ public class OrderService {
                         PromoCodeService promoCodeService,
                         NotificationService notificationService,
                         EtaService etaService,
+                        EmailDispatchService emailDispatchService,
+                        SmsDispatchService smsDispatchService,
+                        OrderFraudService orderFraudService,
+                        VendorCommissionService vendorCommissionService,
                         MeterRegistry meterRegistry) {
         this.orderRepository = orderRepository;
         this.menuItemRepository = menuItemRepository;
@@ -98,6 +117,10 @@ public class OrderService {
         this.promoCodeService = promoCodeService;
         this.notificationService = notificationService;
         this.etaService = etaService;
+        this.emailDispatchService = emailDispatchService;
+        this.smsDispatchService = smsDispatchService;
+        this.orderFraudService = orderFraudService;
+        this.vendorCommissionService = vendorCommissionService;
 
         this.orderCreatedCounter = Counter.builder("orders.created")
                 .description("Total orders created")
@@ -109,10 +132,6 @@ public class OrderService {
                 .description("Time to create an order")
                 .register(meterRegistry);
     }
-
-    // Tax and delivery fee configuration (could move to properties)
-    private static final double TAX_RATE = 0.05; // 5% tax
-    private static final long DELIVERY_FEE_CENTS = 5000; // ₹50
 
     /**
      * Create a new order from cart.
@@ -185,14 +204,23 @@ public class OrderService {
             orderItems.add(orderItem);
         }
 
-        long taxCents = Math.round(subtotalCents * TAX_RATE);
-        long totalCents = subtotalCents + taxCents + DELIVERY_FEE_CENTS;
+        long taxCents = Math.round(subtotalCents * taxRate);
+        long totalCents = subtotalCents + taxCents + deliveryFeeCents;
 
-        // 5b. Apply promo code discount (Phase 3)
+        // 5b. Fraud velocity checks
+        OrderFraudService.FraudCheckResult fraudCheck = orderFraudService.checkOrderCreation(customerId, totalCents);
+        if (fraudCheck.blocked()) {
+            throw new BusinessException("Order blocked: " + String.join("; ", fraudCheck.warnings()));
+        }
+        if (!fraudCheck.warnings().isEmpty()) {
+            log.warn("Fraud warnings for customer {}: {}", customerId, fraudCheck.warnings());
+        }
+
+        // 5c. Apply promo code discount
         long discountCents = 0;
         String promoCode = null;
         if (dto.getPromoCode() != null && !dto.getPromoCode().isBlank()) {
-            discountCents = promoCodeService.applyPromo(dto.getPromoCode().trim(), subtotalCents);
+            discountCents = promoCodeService.applyPromo(dto.getPromoCode().trim(), subtotalCents, customerId, null);
             promoCode = dto.getPromoCode().trim().toUpperCase();
             totalCents -= discountCents;
             if (totalCents < 0) totalCents = 0;
@@ -206,7 +234,7 @@ public class OrderService {
                 .deliveryAddress(deliveryAddress)
                 .status(OrderStatus.PLACED)
                 .subtotalCents(subtotalCents)
-                .deliveryFeeCents(DELIVERY_FEE_CENTS)
+                .deliveryFeeCents(deliveryFeeCents)
                 .taxCents(taxCents)
                 .discountCents(discountCents)
                 .totalCents(totalCents)
@@ -216,6 +244,15 @@ public class OrderService {
                 .scheduledTime(dto.getScheduledTime() != null ? dto.getScheduledTime().atOffset(ZoneOffset.UTC) : OffsetDateTime.now())
                 .specialInstructions(dto.getSpecialInstructions())
                 .build();
+
+        // 6b. Calculate vendor commission
+        try {
+            var commission = vendorCommissionService.calculateCommission(vendor.getId(), subtotalCents);
+            order.setCommissionCents(commission.get("commissionCents"));
+            order.setVendorPayoutCents(commission.get("vendorPayoutCents"));
+        } catch (Exception e) {
+            log.warn("Commission calculation failed for vendor {}: {}", vendor.getId(), e.getMessage());
+        }
 
         // Associate order items with order
         for (OrderItem item : orderItems) {
@@ -272,6 +309,25 @@ public class OrderService {
                     order.getId());
         } catch (Exception e) {
             log.warn("Failed to create notification for order {}: {}", order.getId(), e.getMessage());
+        }
+
+        // 9d. Send order confirmation email + SMS (Phase 3.2 / 3.3)
+        try {
+            emailDispatchService.sendOrderConfirmation(
+                    customer.getEmail(),
+                    customer.getName() != null ? customer.getName() : "Customer",
+                    order.getOrderNumber(),
+                    order.getTotalCents(),
+                    order.getItems().size() + " item(s)");
+        } catch (Exception e) {
+            log.warn("Failed to send order confirmation email for order {}: {}", order.getId(), e.getMessage());
+        }
+        try {
+            if (customer.getPhone() != null) {
+                smsDispatchService.sendOrderPlacedSms(customer.getPhone(), order.getOrderNumber());
+            }
+        } catch (Exception e) {
+            log.warn("Failed to send order placed SMS for order {}: {}", order.getId(), e.getMessage());
         }
 
         // 10. Publish real-time update
@@ -725,6 +781,31 @@ public class OrderService {
 
             notificationService.createNotification(customerId, NotificationType.ORDER_UPDATE,
                     title, message, orderId);
+
+            // Phase 3.2 / 3.3: Send email + SMS for key status transitions
+            try {
+                emailDispatchService.sendOrderStatusUpdate(
+                        order.getCustomer().getEmail(),
+                        order.getCustomer().getName() != null ? order.getCustomer().getName() : "Customer",
+                        orderNum,
+                        oldStatus.name(),
+                        newStatus.name());
+            } catch (Exception ex) {
+                log.warn("Email dispatch failed for order {} status {}: {}", orderId, newStatus, ex.getMessage());
+            }
+
+            try {
+                String phone = order.getCustomer().getPhone();
+                if (phone != null) {
+                    if (newStatus == OrderStatus.DELIVERED) {
+                        smsDispatchService.sendOrderDeliveredSms(phone, orderNum);
+                    } else if (newStatus == OrderStatus.ENROUTE || newStatus == OrderStatus.PICKED_UP) {
+                        smsDispatchService.sendOutForDeliverySms(phone, orderNum);
+                    }
+                }
+            } catch (Exception ex) {
+                log.warn("SMS dispatch failed for order {} status {}: {}", orderId, newStatus, ex.getMessage());
+            }
 
             log.debug("Notification sent to customer {} for order {} status: {}", customerId, orderId, newStatus);
         } catch (Exception e) {

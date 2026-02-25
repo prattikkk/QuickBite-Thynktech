@@ -10,8 +10,10 @@ import { formatCurrencyCompact, formatDateTime } from '../utils';
 import { useToastStore } from '../store';
 import VendorMenuManagement from './VendorMenuManagement';
 import VendorProfile from './VendorProfile';
+import VendorAnalytics from '../components/VendorAnalytics';
+import InventoryManagement from '../components/InventoryManagement';
 
-type Tab = 'orders' | 'kds' | 'menu' | 'profile';
+type Tab = 'orders' | 'kds' | 'menu' | 'analytics' | 'inventory' | 'profile';
 
 export default function VendorDashboard() {
   const [tab, setTab] = useState<Tab>('orders');
@@ -125,6 +127,8 @@ export default function VendorDashboard() {
     { key: 'orders', label: 'Orders', icon: '📋' },
     { key: 'kds', label: 'Kitchen', icon: '🍳' },
     { key: 'menu', label: 'Menu', icon: '🍽️' },
+    { key: 'analytics', label: 'Analytics', icon: '📊' },
+    { key: 'inventory', label: 'Inventory', icon: '📦' },
     { key: 'profile', label: 'Profile', icon: '⚙️' },
   ];
 
@@ -210,6 +214,14 @@ export default function VendorDashboard() {
               Go to Profile
             </button>
           </div>
+        )}
+
+        {tab === 'analytics' && vendor && (
+          <VendorAnalytics vendorId={vendor.id} />
+        )}
+
+        {tab === 'inventory' && vendor && (
+          <InventoryManagement vendorId={vendor.id} />
         )}
 
         {tab === 'profile' && (

@@ -5,6 +5,7 @@ import com.quickbite.orders.dto.OrderItemResponseDTO;
 import com.quickbite.orders.dto.OrderResponseDTO;
 import com.quickbite.orders.entity.Order;
 import com.quickbite.orders.entity.OrderItem;
+import com.quickbite.payments.entity.PaymentStatus;
 import org.springframework.stereotype.Component;
 
 import java.util.stream.Collectors;
@@ -48,6 +49,8 @@ public class OrderMapper {
                 .customerPhone(order.getCustomer().getPhone())
                 .vendorId(order.getVendor().getId())
                 .vendorName(order.getVendor().getName())
+                .vendorLat(order.getVendor().getLat() != null ? order.getVendor().getLat().doubleValue() : null)
+                .vendorLng(order.getVendor().getLng() != null ? order.getVendor().getLng().doubleValue() : null)
                 .driverId(order.getDriver() != null ? order.getDriver().getId() : null)
                 .driverName(order.getDriver() != null ? order.getDriver().getName() : null)
                 .driverPhone(order.getDriver() != null ? order.getDriver().getPhone() : null)
@@ -64,6 +67,7 @@ public class OrderMapper {
                 .status(order.getStatus().name())
                 .paymentStatus(order.getPaymentStatus() != null ? order.getPaymentStatus().name() : null)
                 .paymentMethod(order.getPaymentMethod() != null ? order.getPaymentMethod().name() : null)
+                .providerPaymentId(order.getPayment() != null ? order.getPayment().getProviderPaymentId() : null)
                 .paymentClientSecret(paymentClientSecret)
                 .scheduledTime(order.getScheduledTime())
                 .createdAt(order.getCreatedAt())
@@ -73,6 +77,9 @@ public class OrderMapper {
                 .estimatedPrepMins(order.getEstimatedPrepMins())
                 .specialInstructions(order.getSpecialInstructions())
                 .cancellationReason(order.getCancellationReason())
+                .refundStatus(deriveRefundStatus(order))
+                .commissionCents(order.getCommissionCents())
+                .vendorPayoutCents(order.getVendorPayoutCents())
                 .build();
     }
 
@@ -86,5 +93,15 @@ public class OrderMapper {
                 .totalCents(item.getPriceCents() * item.getQuantity())
                 .specialInstructions(item.getSpecialInstructions())
                 .build();
+    }
+
+    /**
+     * Derive a human-readable refund status string from payment status.
+     */
+    private String deriveRefundStatus(Order order) {
+        if (order.getPaymentStatus() == PaymentStatus.REFUNDED) {
+            return "REFUNDED";
+        }
+        return null;
     }
 }

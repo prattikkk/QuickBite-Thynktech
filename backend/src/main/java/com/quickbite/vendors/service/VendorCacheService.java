@@ -1,5 +1,6 @@
 package com.quickbite.vendors.service;
 
+import com.quickbite.reviews.repository.ReviewRepository;
 import com.quickbite.vendors.dto.VendorResponseDTO;
 import com.quickbite.vendors.entity.Vendor;
 import com.quickbite.vendors.repository.VendorRepository;
@@ -27,6 +28,7 @@ import java.util.stream.Collectors;
 public class VendorCacheService {
 
     private final VendorRepository vendorRepository;
+    private final ReviewRepository reviewRepository;
 
     @Cacheable(value = "vendors", key = "#page + '-' + #size")
     public Map<String, Object> listActiveVendors(int page, int size) {
@@ -85,6 +87,7 @@ public class VendorCacheService {
                 .lng(vendor.getLng())
                 .openHours(vendor.getOpenHours())
                 .rating(vendor.getRating())
+                .reviewCount(reviewRepository.countByVendorIdAndHiddenFalse(vendor.getId()))
                 .active(vendor.getActive())
                 .menuItemCount(vendor.getMenuItems() != null ? vendor.getMenuItems().size() : 0)
                 .createdAt(vendor.getCreatedAt())

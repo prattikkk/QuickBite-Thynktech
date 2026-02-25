@@ -7,7 +7,10 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { vendorService } from '../services';
 import { useCartStore, useToastStore } from '../store';
 import { VendorDTO, MenuItemDTO } from '../types';
-import { LoadingSpinner, MenuItemCard, FavoriteButton } from '../components';
+import { LoadingSpinner, MenuItemCard, FavoriteButton, VendorReviews } from '../components';
+import ModifierSelector from '../components/ModifierSelector';
+import type { SelectedModifier } from '../types/phase4.types';
+import { modifierService } from '../services/modifier.service';
 
 export default function VendorDetail() {
   const { id } = useParams<{ id: string }>();
@@ -18,6 +21,9 @@ export default function VendorDetail() {
   const [error, setError] = useState('');
   const { addItem } = useCartStore();
   const { success } = useToastStore();
+
+  // Modifier modal state
+  const [modifierItem, setModifierItem] = useState<MenuItemDTO | null>(null);
 
   useEffect(() => {
     loadVendorAndMenu();
@@ -43,8 +49,19 @@ export default function VendorDetail() {
     }
   };
 
-  const handleAddToCart = (menuItem: MenuItemDTO) => {
+  const handleAddToCart = async (menuItem: MenuItemDTO) => {
     if (!vendor) return;
+
+    // Check for modifiers — if item has modifier groups, show modal
+    try {
+      const groups = await modifierService.getModifiers(menuItem.id);
+      if (groups.length > 0) {
+        setModifierItem(menuItem);
+        return; // show modifier modal instead of adding directly
+      }
+    } catch {
+      // No modifiers or API error — add directly
+    }
 
     addItem({
       menuItemId: menuItem.id,
@@ -56,6 +73,20 @@ export default function VendorDetail() {
     });
 
     success(`${menuItem.name} added to cart!`);
+  };
+
+  const handleModifiersConfirmed = (_modifiers: SelectedModifier[], totalExtraCents: number) => {
+    if (!vendor || !modifierItem) return;
+    addItem({
+      menuItemId: modifierItem.id,
+      menuItemName: modifierItem.name,
+      vendorId: vendor.id,
+      vendorName: vendor.name,
+      priceCents: modifierItem.priceCents + totalExtraCents,
+      imageUrl: modifierItem.imageUrl,
+    });
+    success(`${modifierItem.name} added to cart with customizations!`);
+    setModifierItem(null);
   };
 
   if (loading) {
@@ -160,7 +191,47 @@ export default function VendorDetail() {
             ))}
           </div>
         )}
+
+        {/* Reviews Section */}
+        {id && (
+          <div className="mt-10">
+            <VendorReviews vendorId={id} />
+          </div>
+        )}
       </div>
+
+      {/* Modifier Selection Modal */}
+      {modifierItem && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[80vh] overflow-y-auto p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-bold text-gray-900">Customize: {modifierItem.name}</h3>
+              <button
+                onClick={() => setModifierItem(null)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <ModifierSelector
+              menuItemId={modifierItem.id}
+              onSelectModifiers={handleModifiersConfirmed}
+            />
+
+            <div className="mt-6">
+              <button
+                onClick={() => setModifierItem(null)}
+                className="w-full py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

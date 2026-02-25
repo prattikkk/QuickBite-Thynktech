@@ -29,6 +29,8 @@ public class OrderResponseDTO {
     // Vendor info
     private UUID vendorId;
     private String vendorName;
+    private Double vendorLat;
+    private Double vendorLng;
     
     // Driver info (optional)
     private UUID driverId;
@@ -53,6 +55,7 @@ public class OrderResponseDTO {
     private String status;
     private String paymentStatus;
     private String paymentMethod;
+    private String providerPaymentId;
 
     /** Stripe PaymentIntent client secret — only present if online payment is pending. */
     private String paymentClientSecret;
@@ -67,6 +70,11 @@ public class OrderResponseDTO {
     
     private String specialInstructions;
     private String cancellationReason;
+    private String refundStatus;
+
+    // Commission & payout (visible to admin/vendor)
+    private Long commissionCents;
+    private Long vendorPayoutCents;
 
     @Data
     @Builder

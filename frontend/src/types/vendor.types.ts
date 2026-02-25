@@ -12,6 +12,7 @@ export interface VendorDTO {
   lng: number;
   openHours: Record<string, string>;
   rating: number;
+  reviewCount: number;
   active: boolean;
   menuItemCount: number;
   createdAt: string;

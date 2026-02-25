@@ -16,7 +16,6 @@ export const authService = {
    */
   login: async (credentials: LoginRequest): Promise<AuthResponse> => {
     const response = await api.post<any, any>('/auth/login', credentials);
-    // Interceptor already unwraps ApiResponse.data
     return response;
   },
 
@@ -25,16 +24,16 @@ export const authService = {
    */
   register: async (data: RegisterRequest): Promise<AuthResponse> => {
     const response = await api.post<any, any>('/auth/register', data);
-    // Interceptor already unwraps ApiResponse.data
     return response;
   },
 
   /**
    * Refresh access token
-   * TODO: Implement when backend supports refresh tokens
+   * Refresh token is sent automatically via HttpOnly cookie
    */
-  refreshToken: async (refreshToken: string): Promise<AuthResponse> => {
-    const response = await api.post<any, AuthResponse>('/auth/refresh', { refreshToken });
+  refreshToken: async (): Promise<AuthResponse> => {
+    // No need to send refreshToken in body - it's in HttpOnly cookie
+    const response = await api.post<any, AuthResponse>('/auth/refresh', {});
     return response;
   },
 
@@ -47,17 +46,42 @@ export const authService = {
   },
 
   /**
+   * Request a password reset link.
+   */
+  forgotPassword: async (email: string): Promise<string | null> => {
+    const response = await api.post<any, any>('/auth/forgot-password', { email });
+    return response; // raw token (for dev/testing); in prod, user receives email
+  },
+
+  /**
+   * Reset password using the token received via email/link.
+   */
+  resetPassword: async (token: string, newPassword: string): Promise<void> => {
+    await api.post('/auth/reset-password', { token, newPassword });
+  },
+
+  /**
+   * Verify email address using the token received via email/link.
+   */
+  verifyEmail: async (token: string): Promise<void> => {
+    await api.post('/auth/verify-email', { token });
+  },
+
+  /**
+   * Resend email verification link.
+   */
+  resendVerification: async (email: string): Promise<void> => {
+    await api.post('/auth/resend-verification', { email });
+  },
+
+  /**
    * Logout — revoke refresh token on server, then clear local storage.
+   * Refresh token is sent automatically via HttpOnly cookie.
    */
   logout: async () => {
     try {
-      const authData = localStorage.getItem('quickbite_auth');
-      if (authData) {
-        const parsed = JSON.parse(authData);
-        if (parsed.refreshToken) {
-          await api.post('/auth/logout', { refreshToken: parsed.refreshToken });
-        }
-      }
+      // Server reads refreshToken from HttpOnly cookie
+      await api.post('/auth/logout', {});
     } catch {
       // Best-effort: server may be unreachable, proceed with local cleanup
     } finally {

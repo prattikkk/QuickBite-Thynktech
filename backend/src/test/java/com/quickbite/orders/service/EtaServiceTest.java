@@ -5,6 +5,7 @@ import com.quickbite.orders.entity.OrderItem;
 import com.quickbite.users.entity.Address;
 import com.quickbite.vendors.entity.MenuItem;
 import com.quickbite.vendors.entity.Vendor;
+import com.quickbite.maps.service.HaversineMapsService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -29,7 +30,7 @@ class EtaServiceTest {
 
     @BeforeEach
     void setUp() {
-        etaService = new EtaService();
+        etaService = new EtaService(new HaversineMapsService());
 
         // Bangalore coordinates for vendor
         vendor = Vendor.builder()

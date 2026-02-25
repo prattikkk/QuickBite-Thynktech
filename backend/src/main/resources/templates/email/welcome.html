@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="UTF-8"/></head>
+<body style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;background:#f9fafb;">
+<div style="background:#fff;border-radius:8px;padding:32px;border:1px solid #e5e7eb;">
+    <div style="text-align:center;margin-bottom:24px;">
+        <h1 style="color:#f97316;font-size:28px;margin:0;">🍔 QuickBite</h1>
+    </div>
+    <h2 style="color:#1f2937;">Welcome, <span th:text="${userName}">User</span>!</h2>
+    <p style="color:#4b5563;line-height:1.6;">
+        Thanks for joining QuickBite. You can now browse restaurants, place orders, and track deliveries in real time.
+    </p>
+    <div style="text-align:center;margin:24px 0;">
+        <a th:href="${baseUrl}" style="display:inline-block;padding:12px 32px;background:#f97316;color:#fff;text-decoration:none;border-radius:6px;font-weight:600;">Start Ordering</a>
+    </div>
+    <p style="color:#9ca3af;font-size:12px;text-align:center;">QuickBite — Delivered fast, every time.</p>
+</div>
+</body>
+</html>

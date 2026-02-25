@@ -64,6 +64,10 @@ function CheckoutForm() {
   const [promoMessage, setPromoMessage] = useState('');
   const [validatingPromo, setValidatingPromo] = useState(false);
 
+  // Scheduled order state
+  const [scheduleOrder, setScheduleOrder] = useState(false);
+  const [scheduledTime, setScheduledTime] = useState('');
+
   // Inline "Add Address" form state
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [newAddress, setNewAddress] = useState<Omit<AddressDTO, 'id'>>(EMPTY_ADDRESS);
@@ -179,6 +183,7 @@ function CheckoutForm() {
         paymentMethod,
         specialInstructions: specialInstructions.trim() || undefined,
         promoCode: promoApplied ? promoCode.trim() : undefined,
+        scheduledTime: scheduleOrder && scheduledTime ? scheduledTime : undefined,
       };
 
       const order = await orderService.createOrder(orderData);
@@ -451,6 +456,37 @@ function CheckoutForm() {
               rows={3}
               className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
+          </div>
+
+          {/* Schedule Order — Phase 4 */}
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold">Schedule Order</h2>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={scheduleOrder}
+                  onChange={(e) => {
+                    setScheduleOrder(e.target.checked);
+                    if (!e.target.checked) setScheduledTime('');
+                  }}
+                  className="h-4 w-4 text-primary-600 rounded border-gray-300"
+                />
+                <span className="text-sm text-gray-700">Schedule for later</span>
+              </label>
+            </div>
+            {scheduleOrder && (
+              <div>
+                <input
+                  type="datetime-local"
+                  value={scheduledTime}
+                  onChange={(e) => setScheduledTime(e.target.value)}
+                  min={new Date(Date.now() + 30 * 60000).toISOString().slice(0, 16)}
+                  className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                />
+                <p className="text-xs text-gray-500 mt-1">Must be at least 30 minutes from now</p>
+              </div>
+            )}
           </div>
 
           {/* Order Summary */}

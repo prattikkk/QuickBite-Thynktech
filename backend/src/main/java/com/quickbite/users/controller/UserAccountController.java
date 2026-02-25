@@ -181,6 +181,7 @@ public class UserAccountController {
         m.put("phone", user.getPhone());
         m.put("role", user.getRole().getName());
         m.put("active", user.getActive());
+        m.put("emailVerified", user.getEmailVerified() != null && user.getEmailVerified());
         m.put("createdAt", user.getCreatedAt());
         return m;
     }
