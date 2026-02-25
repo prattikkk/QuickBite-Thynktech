@@ -62,14 +62,14 @@ export default function AdminReporting() {
       <Breadcrumbs items={[{ label: 'Admin', to: '/admin/health' }, { label: 'Reports' }]} />
 
       <div className="flex items-center justify-between mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Platform Reports</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Platform Reports</h1>
         <div className="flex gap-2">
           {(['daily', 'weekly', 'monthly'] as const).map((p) => (
             <button
               key={p}
               onClick={() => setPeriod(p)}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                period === p ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                period === p ? 'bg-primary-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600'
               }`}
             >
               {p.charAt(0).toUpperCase() + p.slice(1)}
@@ -94,8 +94,8 @@ export default function AdminReporting() {
           </div>
 
           {/* Revenue Chart Section */}
-          <div className="bg-white rounded-lg shadow p-6 mb-8">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Revenue Trend</h2>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-8">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Revenue Trend</h2>
             {revenueLoading ? (
               <div className="flex justify-center py-8">
                 <div className="animate-spin h-6 w-6 border-b-2 border-primary-600 rounded-full" />
@@ -114,7 +114,7 @@ export default function AdminReporting() {
                         style={{ height: `${height}%`, minHeight: revenue > 0 ? '4px' : '0' }}
                         title={`${label}: $${(revenue / 100).toFixed(2)}`}
                       />
-                      <span className="text-xs text-gray-400 mt-1 truncate w-full text-center">
+                      <span className="text-xs text-gray-400 dark:text-gray-500 mt-1 truncate w-full text-center">
                         {label.length > 5 ? label.slice(5) : label}
                       </span>
                     </div>
@@ -122,13 +122,13 @@ export default function AdminReporting() {
                 })}
               </div>
             ) : (
-              <p className="text-gray-500 text-sm text-center py-4">No revenue data available for this period.</p>
+              <p className="text-gray-500 dark:text-gray-400 text-sm text-center py-4">No revenue data available for this period.</p>
             )}
           </div>
 
           {/* Delivery Time Section */}
-          <div className="bg-white rounded-lg shadow p-6 mb-8">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Delivery Times</h2>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-8">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Delivery Times</h2>
             {deliveryLoading ? (
               <div className="flex justify-center py-8">
                 <div className="animate-spin h-6 w-6 border-b-2 border-primary-600 rounded-full" />
@@ -153,7 +153,7 @@ export default function AdminReporting() {
                 />
               </div>
             ) : (
-              <p className="text-gray-500 text-sm text-center py-4">No delivery time data available.</p>
+              <p className="text-gray-500 dark:text-gray-400 text-sm text-center py-4">No delivery time data available.</p>
             )}
           </div>
 
@@ -180,18 +180,18 @@ export default function AdminReporting() {
 
 function KpiCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="bg-white rounded-lg shadow p-4">
-      <p className="text-sm text-gray-500">{label}</p>
-      <p className="text-2xl font-bold text-gray-900">{value}</p>
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+      <p className="text-sm text-gray-500 dark:text-gray-400">{label}</p>
+      <p className="text-2xl font-bold text-gray-900 dark:text-white">{value}</p>
     </div>
   );
 }
 
 function DeliveryMetric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="bg-gray-50 rounded-lg p-4 text-center">
-      <p className="text-sm text-gray-500 mb-1">{label}</p>
-      <p className="text-xl font-bold text-gray-900">{value}</p>
+    <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 text-center">
+      <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">{label}</p>
+      <p className="text-xl font-bold text-gray-900 dark:text-white">{value}</p>
     </div>
   );
 }

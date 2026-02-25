@@ -18,11 +18,11 @@ export default function Header() {
   };
 
   return (
-    <header className="bg-white shadow-md sticky top-0 z-40" role="banner">
+    <header className="bg-white dark:bg-gray-800 shadow-md sticky top-0 z-40 transition-colors" role="banner">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center py-4">
           {/* Logo */}
-          <Link to="/" className="text-2xl font-bold text-primary-600 flex items-center gap-2" aria-label="QuickBite Home">
+          <Link to="/" className="text-2xl font-bold text-primary-600 dark:text-primary-400 flex items-center gap-2" aria-label="QuickBite Home">
             <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
               <path d="M3 1a1 1 0 000 2h1.22l.305 1.222a.997.997 0 00.01.042l1.358 5.43-.893.892C3.74 11.846 4.632 14 6.414 14H15a1 1 0 000-2H6.414l1-1H14a1 1 0 00.894-.553l3-6A1 1 0 0017 3H6.28l-.31-1.243A1 1 0 005 1H3zM16 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM6.5 18a1.5 1.5 0 100-3 1.5 1.5 0 000 3z" />
             </svg>
@@ -38,19 +38,19 @@ export default function Header() {
                   <>
                     <Link
                       to="/vendors"
-                      className="text-gray-700 hover:text-primary-600 transition-colors font-medium"
+                      className="text-gray-700 dark:text-gray-200 hover:text-primary-600 dark:hover:text-primary-400 transition-colors font-medium"
                     >
                       Restaurants
                     </Link>
                     <Link
                       to="/favorites"
-                      className="text-gray-700 hover:text-primary-600 transition-colors font-medium"
+                      className="text-gray-700 dark:text-gray-200 hover:text-primary-600 dark:hover:text-primary-400 transition-colors font-medium"
                     >
                       Favorites
                     </Link>
                     <Link
                       to="/orders"
-                      className="text-gray-700 hover:text-primary-600 transition-colors font-medium"
+                      className="text-gray-700 dark:text-gray-200 hover:text-primary-600 dark:hover:text-primary-400 transition-colors font-medium"
                     >
                       My Orders
                     </Link>
@@ -63,7 +63,7 @@ export default function Header() {
                 {isVendor() && (
                   <Link
                     to="/vendor/dashboard"
-                    className="text-gray-700 hover:text-primary-600 transition-colors font-medium"
+                    className="text-gray-700 dark:text-gray-200 hover:text-primary-600 dark:hover:text-primary-400 transition-colors font-medium"
                   >
                     Dashboard
                   </Link>
@@ -73,7 +73,7 @@ export default function Header() {
                 {isDriver() && (
                   <Link
                     to="/driver/dashboard"
-                    className="text-gray-700 hover:text-primary-600 transition-colors font-medium"
+                    className="text-gray-700 dark:text-gray-200 hover:text-primary-600 dark:hover:text-primary-400 transition-colors font-medium"
                   >
                     Dashboard
                   </Link>
@@ -84,43 +84,43 @@ export default function Header() {
                   <>
                     <Link
                       to="/admin/health"
-                      className="text-gray-700 hover:text-primary-600 transition-colors font-medium"
+                      className="text-gray-700 dark:text-gray-200 hover:text-primary-600 dark:hover:text-primary-400 transition-colors font-medium"
                     >
                       Health
                     </Link>
                     <Link
                       to="/admin/management"
-                      className="text-gray-700 hover:text-primary-600 transition-colors font-medium"
+                      className="text-gray-700 dark:text-gray-200 hover:text-primary-600 dark:hover:text-primary-400 transition-colors font-medium"
                     >
                       Management
                     </Link>
                     <Link
                       to="/admin/reports"
-                      className="text-gray-700 hover:text-primary-600 transition-colors font-medium"
+                      className="text-gray-700 dark:text-gray-200 hover:text-primary-600 dark:hover:text-primary-400 transition-colors font-medium"
                     >
                       Reports
                     </Link>
                     <Link
                       to="/admin/refunds"
-                      className="text-gray-700 hover:text-primary-600 transition-colors font-medium"
+                      className="text-gray-700 dark:text-gray-200 hover:text-primary-600 dark:hover:text-primary-400 transition-colors font-medium"
                     >
                       Refunds
                     </Link>
                     <Link
                       to="/admin/promos"
-                      className="text-gray-700 hover:text-primary-600 transition-colors font-medium"
+                      className="text-gray-700 dark:text-gray-200 hover:text-primary-600 dark:hover:text-primary-400 transition-colors font-medium"
                     >
                       Promos
                     </Link>
                     <Link
                       to="/admin/commissions"
-                      className="text-gray-700 hover:text-primary-600 transition-colors font-medium"
+                      className="text-gray-700 dark:text-gray-200 hover:text-primary-600 dark:hover:text-primary-400 transition-colors font-medium"
                     >
                       Commissions
                     </Link>
                     <Link
                       to="/admin/reviews"
-                      className="text-gray-700 hover:text-primary-600 transition-colors font-medium"
+                      className="text-gray-700 dark:text-gray-200 hover:text-primary-600 dark:hover:text-primary-400 transition-colors font-medium"
                     >
                       Reviews
                     </Link>
@@ -128,17 +128,17 @@ export default function Header() {
                 )}
 
                 {/* User Menu */}
-                <div className="flex items-center gap-3 border-l pl-4">
+                <div className="flex items-center gap-3 border-l dark:border-gray-600 pl-4">
                   <Link
                     to="/profile"
-                    className="text-sm text-gray-700 hover:text-primary-600 transition-colors"
+                    className="text-sm text-gray-700 dark:text-gray-200 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
                     title="Profile"
                   >
                     Hi, <span className="font-medium">{user?.fullName?.split(' ')[0]}</span>
                   </Link>
                   <Link
                     to="/settings"
-                    className="text-gray-500 hover:text-primary-600 transition-colors"
+                    className="text-gray-500 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
                     aria-label="Settings"
                     title="Settings"
                   >
@@ -159,7 +159,7 @@ export default function Header() {
               <div className="flex items-center gap-3">
                 <Link
                   to="/login"
-                  className="text-gray-700 hover:text-primary-600 transition-colors font-medium"
+                  className="text-gray-700 dark:text-gray-200 hover:text-primary-600 dark:hover:text-primary-400 transition-colors font-medium"
                 >
                   Login
                 </Link>
@@ -176,7 +176,7 @@ export default function Header() {
           {/* Mobile Menu Button */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
+            className="md:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-gray-700 dark:text-gray-200"
             aria-label="Toggle menu"
             aria-expanded={mobileMenuOpen}
             aria-controls="mobile-menu"
@@ -203,14 +203,14 @@ export default function Header() {
 
         {/* Mobile Menu */}
         {mobileMenuOpen && (
-          <nav id="mobile-menu" className="md:hidden border-t py-4 space-y-2" aria-label="Mobile navigation">
+          <nav id="mobile-menu" className="md:hidden border-t dark:border-gray-700 py-4 space-y-2" aria-label="Mobile navigation">
             {!isAuthenticated && (
               <Link
-                to="/vendors"
-                className="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+                to="/login"
+                className="block px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                Restaurants
+                Login
               </Link>
             )}
 
@@ -220,21 +220,21 @@ export default function Header() {
                   <>
                     <Link
                       to="/vendors"
-                      className="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+                      className="block px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       Restaurants
                     </Link>
                     <Link
                       to="/orders"
-                      className="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+                      className="block px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       My Orders
                     </Link>
                     <Link
                       to="/cart"
-                      className="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+                      className="block px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       Cart
@@ -245,7 +245,7 @@ export default function Header() {
                 {isVendor() && (
                   <Link
                     to="/vendor/dashboard"
-                    className="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+                    className="block px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     Dashboard
@@ -255,7 +255,7 @@ export default function Header() {
                 {isDriver() && (
                   <Link
                     to="/driver/dashboard"
-                    className="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+                    className="block px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     Dashboard
@@ -266,49 +266,49 @@ export default function Header() {
                   <>
                     <Link
                       to="/admin/health"
-                      className="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+                      className="block px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       Health
                     </Link>
                     <Link
                       to="/admin/management"
-                      className="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+                      className="block px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       Management
                     </Link>
                     <Link
                       to="/admin/reports"
-                      className="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+                      className="block px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       Reports
                     </Link>
                     <Link
                       to="/admin/refunds"
-                      className="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+                      className="block px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       Refunds
                     </Link>
                     <Link
                       to="/admin/promos"
-                      className="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+                      className="block px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       Promos
                     </Link>
                     <Link
                       to="/admin/commissions"
-                      className="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+                      className="block px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       Commissions
                     </Link>
                     <Link
                       to="/admin/reviews"
-                      className="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+                      className="block px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       Reviews
@@ -316,21 +316,21 @@ export default function Header() {
                   </>
                 )}
 
-                <div className="px-4 py-2 text-sm text-gray-700 border-t">
+                <div className="px-4 py-2 text-sm text-gray-700 dark:text-gray-200 border-t dark:border-gray-700">
                   <p className="font-medium">{user?.fullName}</p>
-                  <p className="text-xs text-gray-500">{user?.email}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">{user?.email}</p>
                 </div>
 
                 <Link
                   to="/profile"
-                  className="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+                  className="block px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   Profile
                 </Link>
                 <Link
                   to="/settings"
-                  className="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+                  className="block px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   Settings
@@ -338,7 +338,7 @@ export default function Header() {
 
                 <button
                   onClick={handleLogout}
-                  className="block w-full text-left px-4 py-2 text-primary-600 hover:bg-gray-100 rounded-lg font-medium"
+                  className="block w-full text-left px-4 py-2 text-primary-600 dark:text-primary-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg font-medium"
                 >
                   Logout
                 </button>
@@ -347,7 +347,7 @@ export default function Header() {
               <>
                 <Link
                   to="/login"
-                  className="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+                  className="block px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   Login

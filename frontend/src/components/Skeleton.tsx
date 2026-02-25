@@ -18,7 +18,7 @@ export default function Skeleton({
   className = '',
   count = 1,
 }: SkeletonProps) {
-  const baseClasses = 'animate-pulse bg-gray-200 rounded';
+  const baseClasses = 'animate-pulse bg-gray-200 dark:bg-gray-700 rounded';
 
   const variantClasses = {
     text: 'h-4 rounded',
@@ -49,7 +49,7 @@ export default function Skeleton({
 /** Pre-built skeleton patterns for common layouts */
 export function SkeletonCard() {
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 space-y-3">
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 space-y-3">
       <Skeleton variant="rect" height="160px" className="w-full" />
       <Skeleton width="60%" />
       <Skeleton width="40%" />

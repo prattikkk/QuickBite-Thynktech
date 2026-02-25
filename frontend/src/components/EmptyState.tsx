@@ -39,9 +39,9 @@ export default function EmptyState({
       <div className="text-5xl mb-4" aria-hidden="true">
         {icon ?? '📭'}
       </div>
-      <h3 className="text-lg font-semibold text-gray-900 mb-2">{title}</h3>
+      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">{title}</h3>
       {description && (
-        <p className="text-gray-500 text-center max-w-md mb-4">{description}</p>
+        <p className="text-gray-500 dark:text-gray-400 text-center max-w-md mb-4">{description}</p>
       )}
       {action && (
         <button

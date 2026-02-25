@@ -18,14 +18,14 @@ export default function Breadcrumbs({ items }: BreadcrumbsProps) {
 
   return (
     <nav aria-label="Breadcrumb" className="mb-4">
-      <ol className="flex items-center space-x-2 text-sm text-gray-500">
+      <ol className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
         {items.map((item, index) => {
           const isLast = index === items.length - 1;
           return (
             <li key={index} className="flex items-center">
               {index > 0 && (
                 <svg
-                  className="w-4 h-4 text-gray-400 mx-1"
+                  className="w-4 h-4 text-gray-400 dark:text-gray-500 mx-1"
                   fill="currentColor"
                   viewBox="0 0 20 20"
                   aria-hidden="true"
@@ -38,11 +38,11 @@ export default function Breadcrumbs({ items }: BreadcrumbsProps) {
                 </svg>
               )}
               {isLast || !item.to ? (
-                <span className={isLast ? 'text-gray-900 font-medium' : ''} aria-current={isLast ? 'page' : undefined}>
+                <span className={isLast ? 'text-gray-900 dark:text-white font-medium' : ''} aria-current={isLast ? 'page' : undefined}>
                   {item.label}
                 </span>
               ) : (
-                <Link to={item.to} className="hover:text-orange-600 transition-colors">
+                <Link to={item.to} className="hover:text-orange-600 dark:hover:text-orange-400 transition-colors">
                   {item.label}
                 </Link>
               )}

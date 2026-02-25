@@ -109,10 +109,10 @@ export default function AdminReviewModeration() {
     <div className="max-w-7xl mx-auto px-4 py-8">
       <Breadcrumbs items={[{ label: 'Admin', to: '/admin/health' }, { label: 'Reviews' }]} />
 
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Review Moderation</h1>
+      <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Review Moderation</h1>
 
       {/* Tabs */}
-      <div className="flex gap-4 mb-6 border-b border-gray-200">
+      <div className="flex gap-4 mb-6 border-b border-gray-200 dark:border-gray-700">
         {(['vendor', 'driver'] as const).map((t) => (
           <button
             key={t}
@@ -120,7 +120,7 @@ export default function AdminReviewModeration() {
             className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${
               tab === t
                 ? 'border-orange-500 text-orange-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
+                : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
             }`}
           >
             {t === 'vendor' ? '🏪 Vendor Reviews' : '🚗 Driver Reviews'}
@@ -130,7 +130,7 @@ export default function AdminReviewModeration() {
 
       {/* Filters */}
       <div className="flex items-center gap-3 mb-4">
-        <span className="text-sm text-gray-600">Filter by rating:</span>
+        <span className="text-sm text-gray-600 dark:text-gray-300">Filter by rating:</span>
         {[null, 5, 4, 3, 2, 1].map((r) => (
           <button
             key={r ?? 'all'}
@@ -138,7 +138,7 @@ export default function AdminReviewModeration() {
             className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
               ratingFilter === r
                 ? 'bg-orange-500 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600'
             }`}
           >
             {r === null ? 'All' : `${r}★`}
@@ -147,7 +147,7 @@ export default function AdminReviewModeration() {
       </div>
 
       {loading ? (
-        <div className="bg-white rounded-lg shadow-sm p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
           <SkeletonTable rows={5} cols={5} />
         </div>
       ) : filtered.length === 0 ? (
@@ -161,13 +161,13 @@ export default function AdminReviewModeration() {
           {filtered.map((review) => (
             <div
               key={review.id}
-              className={`bg-white rounded-lg shadow-sm border p-4 ${review.hidden ? 'opacity-60 border-red-200' : 'border-gray-200'}`}
+              className={`bg-white dark:bg-gray-800 rounded-lg shadow-sm border p-4 ${review.hidden ? 'opacity-60 border-red-200' : 'border-gray-200 dark:border-gray-700'}`}
             >
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-1">
                     <StarRating rating={review.rating} size="sm" />
-                    <span className="text-sm font-medium text-gray-900">
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">
                       {review.customerName}
                     </span>
                     {review.hidden && (
@@ -176,13 +176,13 @@ export default function AdminReviewModeration() {
                       </span>
                     )}
                   </div>
-                  <p className="text-sm text-gray-500 mb-2">
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
                     {tab === 'vendor' ? `Vendor: ${review.vendorName}` : `Driver: ${review.driverName}`}
                     {' · '}
                     {new Date(review.createdAt).toLocaleDateString()}
                   </p>
                   {review.comment && (
-                    <p className="text-sm text-gray-700">{review.comment}</p>
+                    <p className="text-sm text-gray-700 dark:text-gray-200">{review.comment}</p>
                   )}
                 </div>
                 <button

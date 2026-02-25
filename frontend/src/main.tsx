@@ -7,6 +7,16 @@ import { initPushNotifications } from './native/push'
 import { isNative } from './native/platform'
 import { initSentry } from './services/sentry'
 
+// Restore dark mode preference before first paint to avoid flash
+(() => {
+  const theme = localStorage.getItem('theme');
+  if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+    document.documentElement.classList.add('dark');
+  } else {
+    document.documentElement.classList.remove('dark');
+  }
+})();
+
 // Initialize Sentry error monitoring (no-op if VITE_SENTRY_DSN not set)
 initSentry().catch(console.error);
 

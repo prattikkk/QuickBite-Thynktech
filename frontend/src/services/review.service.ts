@@ -33,20 +33,20 @@ export interface PagedReviews {
 export const reviewService = {
   /** Submit a review for a delivered order */
   async submitReview(orderId: string, rating: number, comment?: string): Promise<ReviewDTO> {
-    const { data } = await api.post(`/orders/${orderId}/review`, { rating, comment });
-    return data;
+    const res = await api.post(`/orders/${orderId}/review`, { rating, comment });
+    return res?.data ?? res;
   },
 
   /** Get paginated reviews for a vendor (public) */
   async getVendorReviews(vendorId: string, page = 0, size = 10): Promise<PagedReviews> {
-    const { data } = await api.get(`/vendors/${vendorId}/reviews`, { params: { page, size } });
-    return data;
+    const res = await api.get(`/vendors/${vendorId}/reviews`, { params: { page, size } });
+    return res?.data ?? res;
   },
 
   /** Get rating summary for a vendor (public) */
   async getRatingSummary(vendorId: string): Promise<RatingSummaryDTO> {
-    const { data } = await api.get(`/vendors/${vendorId}/rating-summary`);
-    return data;
+    const res = await api.get(`/vendors/${vendorId}/rating-summary`);
+    return res?.data ?? res;
   },
 
   /** Get all vendor reviews across all vendors (admin moderation) */

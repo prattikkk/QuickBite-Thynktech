@@ -111,8 +111,8 @@ export default function Settings() {
 
   return (
     <div className="max-w-2xl mx-auto p-6">
-      <h1 className="text-2xl font-bold text-gray-900 mb-2">Settings</h1>
-      <p className="text-gray-500 mb-6">Manage your notification preferences</p>
+      <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Settings</h1>
+      <p className="text-gray-500 dark:text-gray-400 mb-6">Manage your notification preferences</p>
 
       {error && (
         <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-lg border border-red-200" role="alert">
@@ -125,17 +125,17 @@ export default function Settings() {
         </div>
       )}
 
-      <div className="bg-white rounded-lg shadow divide-y divide-gray-100">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow divide-y divide-gray-100 dark:divide-gray-700">
         <div className="px-6 py-4">
-          <h2 className="text-lg font-semibold text-gray-800">Notification Channels</h2>
-          <p className="text-sm text-gray-500">Choose how you want to be notified</p>
+          <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Notification Channels</h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Choose how you want to be notified</p>
         </div>
 
         {toggleItems.map((item) => (
-          <div key={item.key} className="flex items-center justify-between px-6 py-4 hover:bg-gray-50 transition-colors">
+          <div key={item.key} className="flex items-center justify-between px-6 py-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
             <div className="flex-1 min-w-0 mr-4">
-              <p className="font-medium text-gray-900">{item.label}</p>
-              <p className="text-sm text-gray-500">{item.description}</p>
+              <p className="font-medium text-gray-900 dark:text-white">{item.label}</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">{item.description}</p>
             </div>
             <button
               type="button"
@@ -144,8 +144,8 @@ export default function Settings() {
               aria-label={`${item.label}: ${preferences[item.key] ? 'enabled' : 'disabled'}`}
               disabled={saving}
               onClick={() => handleToggle(item.key)}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 ${
-                preferences[item.key] ? 'bg-primary-600' : 'bg-gray-300'
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 ${
+                preferences[item.key] ? 'bg-primary-600' : 'bg-gray-300 dark:bg-gray-600'
               } ${saving ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
             >
               <span
@@ -159,15 +159,15 @@ export default function Settings() {
       </div>
 
       {/* Dark Mode */}
-      <div className="mt-6 bg-white rounded-lg shadow divide-y divide-gray-100">
+      <div className="mt-6 bg-white dark:bg-gray-800 rounded-lg shadow divide-y divide-gray-100 dark:divide-gray-700">
         <div className="px-6 py-4">
-          <h2 className="text-lg font-semibold text-gray-800">Appearance</h2>
-          <p className="text-sm text-gray-500">Customize the look and feel</p>
+          <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Appearance</h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Customize the look and feel</p>
         </div>
-        <div className="flex items-center justify-between px-6 py-4 hover:bg-gray-50 transition-colors">
+        <div className="flex items-center justify-between px-6 py-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
           <div className="flex-1 min-w-0 mr-4">
-            <p className="font-medium text-gray-900">Dark Mode</p>
-            <p className="text-sm text-gray-500">Use a darker color scheme that's easier on your eyes</p>
+            <p className="font-medium text-gray-900 dark:text-white">Dark Mode</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Use a darker color scheme that's easier on your eyes</p>
           </div>
           <button
             type="button"
@@ -175,8 +175,8 @@ export default function Settings() {
             aria-checked={darkMode}
             aria-label={`Dark mode: ${darkMode ? 'enabled' : 'disabled'}`}
             onClick={toggleDarkMode}
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 ${
-              darkMode ? 'bg-primary-600' : 'bg-gray-300'
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 ${
+              darkMode ? 'bg-primary-600' : 'bg-gray-300 dark:bg-gray-600'
             } cursor-pointer`}
           >
             <span

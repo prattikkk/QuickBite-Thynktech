@@ -75,20 +75,20 @@ export default function ConfirmDialog({
         aria-modal="true"
         aria-labelledby="confirm-dialog-title"
         aria-describedby="confirm-dialog-message"
-        className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4 p-6"
+        className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-md w-full mx-4 p-6"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 id="confirm-dialog-title" className="text-lg font-bold text-gray-900 mb-2">
+        <h2 id="confirm-dialog-title" className="text-lg font-bold text-gray-900 dark:text-white mb-2">
           {title}
         </h2>
-        <p id="confirm-dialog-message" className="text-gray-600 mb-6">
+        <p id="confirm-dialog-message" className="text-gray-600 dark:text-gray-300 mb-6">
           {message}
         </p>
         <div className="flex justify-end gap-3">
           <button
             onClick={onCancel}
             disabled={loading}
-            className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 font-medium text-sm disabled:opacity-50"
+            className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 font-medium text-sm disabled:opacity-50"
           >
             {cancelLabel}
           </button>

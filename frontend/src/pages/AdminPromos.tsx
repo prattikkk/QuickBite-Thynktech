@@ -140,7 +140,7 @@ export default function AdminPromos() {
   };
 
   const getStatusBadge = (promo: PromoCodeDTO) => {
-    if (!promo.active) return <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">Inactive</span>;
+    if (!promo.active) return <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100">Inactive</span>;
     if (promo.validUntil && new Date(promo.validUntil) < new Date()) return <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Expired</span>;
     if (promo.maxUses && promo.currentUses >= promo.maxUses) return <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">Depleted</span>;
     return <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Active</span>;
@@ -155,7 +155,7 @@ export default function AdminPromos() {
       <Breadcrumbs items={[{ label: 'Admin', to: '/admin/health' }, { label: 'Promo Codes' }]} />
 
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Promo Codes</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Promo Codes</h1>
         <button
           onClick={openCreate}
           className="bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
@@ -172,12 +172,12 @@ export default function AdminPromos() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           aria-label="Search promo codes"
-          className="w-full max-w-xs border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+          className="w-full max-w-xs border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 dark:bg-gray-700 dark:text-white"
         />
       </div>
 
       {loading ? (
-        <div className="bg-white rounded-lg shadow-sm p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
           <SkeletonTable rows={5} cols={6} />
         </div>
       ) : filtered.length === 0 ? (
@@ -188,34 +188,34 @@ export default function AdminPromos() {
           action={!search ? { label: 'Create Promo', onClick: openCreate } : undefined}
         />
       ) : (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-x-auto">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-x-auto">
           <table className="w-full text-left">
             <thead>
-              <tr className="border-b border-gray-200 bg-gray-50">
-                <th scope="col" className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Code</th>
-                <th scope="col" className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Type</th>
-                <th scope="col" className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Value</th>
-                <th scope="col" className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Usage</th>
-                <th scope="col" className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Status</th>
-                <th scope="col" className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Expiry</th>
-                <th scope="col" className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Actions</th>
+              <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+                <th scope="col" className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Code</th>
+                <th scope="col" className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Type</th>
+                <th scope="col" className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Value</th>
+                <th scope="col" className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Usage</th>
+                <th scope="col" className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Status</th>
+                <th scope="col" className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Expiry</th>
+                <th scope="col" className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
+            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
               {filtered.map((promo) => (
-                <tr key={promo.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-mono text-sm font-medium text-gray-900">{promo.code}</td>
-                  <td className="px-4 py-3 text-sm text-gray-700">{promo.discountType}</td>
-                  <td className="px-4 py-3 text-sm text-gray-700">
+                <tr key={promo.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                  <td className="px-4 py-3 font-mono text-sm font-medium text-gray-900 dark:text-white">{promo.code}</td>
+                  <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-200">{promo.discountType}</td>
+                  <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-200">
                     {promo.discountType === 'PERCENT'
                       ? `${promo.discountValue}%`
-                      : `₹${(promo.discountValue / 100).toFixed(2)}`}
+                      : `$${(promo.discountValue / 100).toFixed(2)}`}
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-700">
+                  <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-200">
                     {promo.currentUses}{promo.maxUses ? `/${promo.maxUses}` : ''}
                   </td>
                   <td className="px-4 py-3">{getStatusBadge(promo)}</td>
-                  <td className="px-4 py-3 text-sm text-gray-500">
+                  <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
                     {promo.validUntil ? formatDateTime(promo.validUntil) : '—'}
                   </td>
                   <td className="px-4 py-3">
@@ -248,119 +248,119 @@ export default function AdminPromos() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="promo-modal-title"
-            className="bg-white rounded-xl shadow-xl max-w-lg w-full mx-4 p-6 max-h-[90vh] overflow-y-auto"
+            className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-lg w-full mx-4 p-6 max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 id="promo-modal-title" className="text-lg font-bold text-gray-900 mb-4">
+            <h2 id="promo-modal-title" className="text-lg font-bold text-gray-900 dark:text-white mb-4">
               {editingPromo ? 'Edit Promo Code' : 'Create Promo Code'}
             </h2>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Code *</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Code *</label>
                 <input
                   type="text"
                   value={form.code}
                   onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 dark:bg-gray-700 dark:text-white"
                   placeholder="e.g. SAVE20"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Description</label>
                 <input
                   type="text"
                   value={form.description}
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 dark:bg-gray-700 dark:text-white"
                   placeholder="20% off for new users"
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Discount Type</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Discount Type</label>
                   <select
                     value={form.discountType}
                     onChange={(e) => setForm({ ...form, discountType: e.target.value as 'PERCENT' | 'FIXED' })}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                    className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 dark:bg-gray-700 dark:text-white"
                   >
                     <option value="PERCENT">Percentage</option>
                     <option value="FIXED">Fixed Amount</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
                     {form.discountType === 'PERCENT' ? 'Discount (%)' : 'Discount (cents)'}
                   </label>
                   <input
                     type="number"
                     value={form.discountValue}
                     onChange={(e) => setForm({ ...form, discountValue: Number(e.target.value) })}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                    className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 dark:bg-gray-700 dark:text-white"
                     min={0}
                   />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Min Order (cents)</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Min Order (cents)</label>
                   <input
                     type="number"
                     value={form.minOrderCents}
                     onChange={(e) => setForm({ ...form, minOrderCents: Number(e.target.value) })}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                    className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 dark:bg-gray-700 dark:text-white"
                     min={0}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Max Discount (cents)</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Max Discount (cents)</label>
                   <input
                     type="number"
                     value={form.maxDiscountCents}
                     onChange={(e) => setForm({ ...form, maxDiscountCents: Number(e.target.value) })}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                    className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 dark:bg-gray-700 dark:text-white"
                     min={0}
                   />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Max Uses (0 = unlimited)</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Max Uses (0 = unlimited)</label>
                   <input
                     type="number"
                     value={form.maxUses}
                     onChange={(e) => setForm({ ...form, maxUses: Number(e.target.value) })}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                    className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 dark:bg-gray-700 dark:text-white"
                     min={0}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Per-User Limit</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Per-User Limit</label>
                   <input
                     type="number"
                     value={form.maxUsesPerUser}
                     onChange={(e) => setForm({ ...form, maxUsesPerUser: Number(e.target.value) })}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                    className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 dark:bg-gray-700 dark:text-white"
                     min={1}
                   />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Valid From</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Valid From</label>
                   <input
                     type="datetime-local"
                     value={form.validFrom}
                     onChange={(e) => setForm({ ...form, validFrom: e.target.value })}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                    className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 dark:bg-gray-700 dark:text-white"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Valid Until</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Valid Until</label>
                   <input
                     type="datetime-local"
                     value={form.validUntil}
                     onChange={(e) => setForm({ ...form, validUntil: e.target.value })}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                    className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 dark:bg-gray-700 dark:text-white"
                   />
                 </div>
               </div>
@@ -369,15 +369,15 @@ export default function AdminPromos() {
                   type="checkbox"
                   checked={form.active}
                   onChange={(e) => setForm({ ...form, active: e.target.checked })}
-                  className="h-4 w-4 text-orange-600 rounded border-gray-300"
+                  className="h-4 w-4 text-orange-600 rounded border-gray-300 dark:border-gray-600"
                 />
-                <span className="text-sm text-gray-700">Active</span>
+                <span className="text-sm text-gray-700 dark:text-gray-200">Active</span>
               </label>
             </div>
             <div className="flex justify-end gap-3 mt-6">
               <button
                 onClick={() => setShowModal(false)}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 font-medium text-sm"
+                className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 font-medium text-sm"
               >
                 Cancel
               </button>
