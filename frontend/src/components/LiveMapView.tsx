@@ -35,6 +35,8 @@ interface LiveMapViewProps {
   driverLat?: number;
   driverLng?: number;
   className?: string;
+  /** When true, uses driverLat/driverLng props directly (driver's own GPS) instead of polling the API */
+  isDriverView?: boolean;
 }
 
 const USE_WEBSOCKET = import.meta.env.VITE_USE_WEBSOCKET === 'true';
@@ -60,6 +62,7 @@ export default function LiveMapView({
   driverLat: initDriverLat,
   driverLng: initDriverLng,
   className = '',
+  isDriverView = false,
 }: LiveMapViewProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
@@ -92,9 +95,16 @@ export default function LiveMapView({
     }
   }, [orderId, updateDriverPos]);
 
-  // ── WebSocket / Polling setup ─────────────────────────────────────
+  // ── Sync driverLat/driverLng props directly in driver view mode ──
   useEffect(() => {
-    if (!orderId) return;
+    if (isDriverView && initDriverLat != null && initDriverLng != null) {
+      updateDriverPos(initDriverLat, initDriverLng);
+    }
+  }, [isDriverView, initDriverLat, initDriverLng, updateDriverPos]);
+
+  // ── WebSocket / Polling setup (skip in driver view mode) ──────────
+  useEffect(() => {
+    if (!orderId || isDriverView) return;
 
     if (USE_WEBSOCKET) {
       try {
@@ -336,7 +346,7 @@ export default function LiveMapView({
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
                 <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500" />
               </span>
-              Driver location live
+              {isDriverView ? 'Your location' : 'Driver location live'}
             </>
           ) : (
             <>
@@ -344,15 +354,15 @@ export default function LiveMapView({
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
               </svg>
-              Waiting for driver position…
+              {isDriverView ? 'Getting your location…' : 'Waiting for driver position…'}
             </>
           )}
         </span>
         {distanceKm != null && (
           <span className="text-xs font-semibold text-green-700 dark:text-green-400 bg-green-100 dark:bg-green-900/40 px-2 py-0.5 rounded-full">
             {distanceKm < 1
-              ? `${Math.round(distanceKm * 1000)} m away`
-              : `${distanceKm.toFixed(1)} km away`}
+              ? `${Math.round(distanceKm * 1000)} m ${isDriverView ? 'to delivery' : 'away'}`
+              : `${distanceKm.toFixed(1)} km ${isDriverView ? 'to delivery' : 'away'}`}
           </span>
         )}
       </div>

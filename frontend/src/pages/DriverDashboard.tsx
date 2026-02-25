@@ -385,7 +385,7 @@ export default function DriverDashboard() {
                     </div>
 
                     {/* Live Map for active deliveries */}
-                    {['PICKED_UP', 'ENROUTE'].includes(order.status) && (
+                    {['ASSIGNED', 'PICKED_UP', 'ENROUTE'].includes(order.status) && (
                       <div className="mb-4">
                         <LiveMapView
                           orderId={order.id}
@@ -394,6 +394,9 @@ export default function DriverDashboard() {
                           vendorLat={order.vendorLat}
                           vendorLng={order.vendorLng}
                           vendorName={order.vendorName}
+                          driverLat={locationState.lat ?? undefined}
+                          driverLng={locationState.lng ?? undefined}
+                          isDriverView={true}
                           className="h-52"
                         />
                       </div>
