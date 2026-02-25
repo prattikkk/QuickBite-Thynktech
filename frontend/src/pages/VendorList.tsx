@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { vendorService } from '../services/vendor.service';
 import { VendorDTO } from '../types/vendor.types';
@@ -6,38 +6,55 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 import { FavoriteButton } from '../components';
 import { useToastStore } from '../store/toastStore';
 
+type SortOption = 'name' | 'rating' | 'reviewCount';
+
 export default function VendorList() {
   const [vendors, setVendors] = useState<VendorDTO[]>([]);
-  const [filteredVendors, setFilteredVendors] = useState<VendorDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [minRating, setMinRating] = useState(0);
+  const [sortBy, setSortBy] = useState<SortOption>('name');
   const { error: showError } = useToastStore();
+
+  // Derive unique cuisine tags from descriptions (simple heuristic)
+  const filteredVendors = useMemo(() => {
+    let result = vendors;
+
+    // Text search
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(
+        (v) =>
+          v.name.toLowerCase().includes(query) ||
+          v.description?.toLowerCase().includes(query) ||
+          v.address?.toLowerCase().includes(query)
+      );
+    }
+
+    // Rating filter
+    if (minRating > 0) {
+      result = result.filter((v) => (v.rating ?? 0) >= minRating);
+    }
+
+    // Sort
+    result = [...result].sort((a, b) => {
+      if (sortBy === 'rating') return (b.rating ?? 0) - (a.rating ?? 0);
+      if (sortBy === 'reviewCount') return (b.reviewCount ?? 0) - (a.reviewCount ?? 0);
+      return a.name.localeCompare(b.name);
+    });
+
+    return result;
+  }, [vendors, searchQuery, minRating, sortBy]);
 
   useEffect(() => {
     loadVendors();
   }, []);
-
-  useEffect(() => {
-    if (searchQuery.trim() === '') {
-      setFilteredVendors(vendors);
-    } else {
-      const query = searchQuery.toLowerCase();
-      const filtered = vendors.filter(
-        (vendor) =>
-          vendor.name.toLowerCase().includes(query) ||
-          vendor.description?.toLowerCase().includes(query) ||
-          vendor.address?.toLowerCase().includes(query)
-      );
-      setFilteredVendors(filtered);
-    }
-  }, [searchQuery, vendors]);
 
   const loadVendors = async () => {
     try {
       setLoading(true);
       const data = await vendorService.getAllVendors();
       setVendors(data);
-      setFilteredVendors(data);
     } catch (error: any) {
       showError('Failed to load vendors. Please try again.');
       console.error('Error loading vendors:', error);
@@ -73,6 +90,7 @@ export default function VendorList() {
               placeholder="Search by restaurant name, cuisine, or location..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              aria-label="Search restaurants"
               className="w-full px-4 py-3 pl-12 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
             />
             <svg
@@ -91,6 +109,7 @@ export default function VendorList() {
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
+                aria-label="Clear search"
                 className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
               >
                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -104,6 +123,45 @@ export default function VendorList() {
               </button>
             )}
           </div>
+        </div>
+
+        {/* Filters */}
+        <div className="mb-6 flex flex-wrap gap-4 items-center">
+          <div>
+            <label htmlFor="minRating" className="block text-xs font-medium text-gray-500 mb-1">Min Rating</label>
+            <select
+              id="minRating"
+              value={minRating}
+              onChange={(e) => setMinRating(Number(e.target.value))}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+            >
+              <option value={0}>All Ratings</option>
+              <option value={4}>4★ & up</option>
+              <option value={3}>3★ & up</option>
+              <option value={2}>2★ & up</option>
+            </select>
+          </div>
+          <div>
+            <label htmlFor="sortBy" className="block text-xs font-medium text-gray-500 mb-1">Sort By</label>
+            <select
+              id="sortBy"
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as SortOption)}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+            >
+              <option value="name">Name (A-Z)</option>
+              <option value="rating">Highest Rated</option>
+              <option value="reviewCount">Most Reviews</option>
+            </select>
+          </div>
+          {(minRating > 0 || sortBy !== 'name') && (
+            <button
+              onClick={() => { setMinRating(0); setSortBy('name'); }}
+              className="self-end px-3 py-2 text-sm text-primary-600 hover:text-primary-700 font-medium"
+            >
+              Reset Filters
+            </button>
+          )}
         </div>
 
         {/* Vendors Grid */}

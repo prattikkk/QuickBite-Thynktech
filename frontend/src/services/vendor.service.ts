@@ -100,6 +100,13 @@ export const vendorService = {
   markOrderReady: async (orderId: string): Promise<any> => {
     return api.patch(`/orders/${orderId}/status`, { status: 'READY' });
   },
+
+  /** Get scheduled orders for a vendor */
+  getScheduledOrders: async (vendorId: string): Promise<any[]> => {
+    const response = await api.get<any, any>(`/vendors/${vendorId}/scheduled-orders`);
+    const data = response?.data ?? response;
+    return Array.isArray(data) ? data : data?.content || [];
+  },
 };
 
 export default vendorService;

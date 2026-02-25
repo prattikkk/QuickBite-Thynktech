@@ -31,7 +31,15 @@ export default function StarRating({
   const stars = Array.from({ length: maxStars }, (_, i) => i + 1);
 
   return (
-    <div className={`flex items-center gap-0.5 ${className}`}>
+    <div
+      className={`flex items-center gap-0.5 ${className}`}
+      role={interactive ? 'slider' : 'img'}
+      aria-label="Rating"
+      aria-valuemin={interactive ? 1 : undefined}
+      aria-valuemax={interactive ? maxStars : undefined}
+      aria-valuenow={interactive ? rating : undefined}
+      aria-valuetext={`${rating} out of ${maxStars} stars`}
+    >
       {stars.map((star) => {
         const filled = interactive ? star <= (hovered || rating) : star <= Math.round(rating);
 

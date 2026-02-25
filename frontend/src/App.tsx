@@ -32,6 +32,9 @@ const Notifications = lazy(() => import('./pages/Notifications'));
 const AdminReporting = lazy(() => import('./pages/AdminReporting'));
 const Settings = lazy(() => import('./pages/Settings'));
 const AdminRefunds = lazy(() => import('./pages/AdminRefunds'));
+const AdminPromos = lazy(() => import('./pages/AdminPromos'));
+const AdminCommissions = lazy(() => import('./pages/AdminCommissions'));
+const AdminReviewModeration = lazy(() => import('./pages/AdminReviewModeration'));
 
 function App() {
   const loadFromStorage = useAuthStore((state) => state.loadFromStorage);
@@ -54,7 +57,7 @@ function App() {
 
   return (
     <BrowserRouter>
-      <div className="min-h-screen bg-gray-50 flex flex-col">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col transition-colors">
         <OfflineBanner />
         <Header />
         <Toast />
@@ -205,6 +208,30 @@ function App() {
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/admin/promos"
+              element={
+                <ProtectedRoute requiredRole="ADMIN">
+                  <AdminPromos />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/commissions"
+              element={
+                <ProtectedRoute requiredRole="ADMIN">
+                  <AdminCommissions />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/reviews"
+              element={
+                <ProtectedRoute requiredRole="ADMIN">
+                  <AdminReviewModeration />
+                </ProtectedRoute>
+              }
+            />
 
             {/* Settings */}
             <Route
@@ -238,9 +265,9 @@ function NotFound() {
   return (
     <div className="min-h-screen flex items-center justify-center">
       <div className="text-center">
-        <h1 className="text-4xl font-bold text-gray-900 mb-2">404</h1>
-        <p className="text-gray-600 mb-4">Page not found</p>
-        <a href="/" className="text-primary-600 hover:text-primary-700 font-medium">
+        <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">404</h1>
+        <p className="text-gray-600 dark:text-gray-400 mb-4">Page not found</p>
+        <a href="/" className="text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 font-medium">
           Go home
         </a>
       </div>

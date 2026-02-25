@@ -110,6 +110,49 @@ export const adminService = {
     });
     return response;
   },
+
+  // ── Commission Management ─────────────────────────────────────────
+
+  /**
+   * Get commission rate for a vendor
+   * GET /admin/commissions/:vendorId
+   */
+  getCommission: async (vendorId: string): Promise<any> => {
+    const response = await api.get<any, any>(`/admin/commissions/${vendorId}`);
+    return response;
+  },
+
+  /**
+   * Set commission rate for a vendor
+   * PUT /admin/commissions/:vendorId
+   */
+  setCommission: async (vendorId: string, commissionRateBps: number, flatFeeCents: number = 0): Promise<any> => {
+    const response = await api.put<any, any>(`/admin/commissions/${vendorId}`, {
+      commissionRateBps,
+      flatFeeCents,
+    });
+    return response;
+  },
+
+  // ── Review Moderation ─────────────────────────────────────────────
+
+  /**
+   * Hide or unhide a vendor review
+   * PUT /admin/reviews/:reviewId/hide
+   */
+  hideVendorReview: async (reviewId: string, hide: boolean = true): Promise<any> => {
+    const response = await api.put<any, any>(`/admin/reviews/${reviewId}/hide`, { hide });
+    return response;
+  },
+
+  /**
+   * Hide or unhide a driver review
+   * PUT /admin/driver-reviews/:reviewId/hide
+   */
+  hideDriverReview: async (reviewId: string, hide: boolean = true): Promise<any> => {
+    const response = await api.put<any, any>(`/admin/driver-reviews/${reviewId}/hide`, { hide });
+    return response;
+  },
 };
 
 export default adminService;

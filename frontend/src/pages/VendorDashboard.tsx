@@ -1,19 +1,22 @@
 /**
- * VendorDashboard — tabbed layout: Orders | Menu | Profile
+ * VendorDashboard — tabbed layout: Orders | KDS | Menu | Scheduled | Analytics | Inventory | Profile
  */
 
 import { useState, useEffect } from 'react';
 import { vendorService } from '../services';
 import { OrderDTO, VendorDTO } from '../types';
 import { LoadingSpinner } from '../components';
+import ConfirmDialog from '../components/ConfirmDialog';
+import EmptyState from '../components/EmptyState';
 import { formatCurrencyCompact, formatDateTime } from '../utils';
 import { useToastStore } from '../store';
+import { useVendorOrders } from '../hooks/useVendorOrders';
 import VendorMenuManagement from './VendorMenuManagement';
 import VendorProfile from './VendorProfile';
 import VendorAnalytics from '../components/VendorAnalytics';
 import InventoryManagement from '../components/InventoryManagement';
 
-type Tab = 'orders' | 'kds' | 'menu' | 'analytics' | 'inventory' | 'profile';
+type Tab = 'orders' | 'kds' | 'menu' | 'scheduled' | 'analytics' | 'inventory' | 'profile';
 
 export default function VendorDashboard() {
   const [tab, setTab] = useState<Tab>('orders');
@@ -22,19 +25,37 @@ export default function VendorDashboard() {
   const [orders, setOrders] = useState<OrderDTO[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [rejectTarget, setRejectTarget] = useState<string | null>(null);
+  const [rejecting, setRejecting] = useState(false);
   const { success, error: showError } = useToastStore();
+
+  // WebSocket hook for real-time KDS updates (M4)
+  useVendorOrders({
+    vendorId: vendor?.id ?? null,
+    enabled: !!vendor,
+    onNewOrder: () => {
+      success('New order received!');
+      loadOrders();
+    },
+    onOrderUpdate: () => loadOrders(),
+  });
 
   // Load vendor profile
   useEffect(() => {
     loadVendorProfile();
   }, []);
 
-  // Load orders + auto-refresh
+  // Load orders initially, then auto-refresh only on orders/kds tabs
   useEffect(() => {
     loadOrders();
-    const interval = setInterval(loadOrders, 10000);
-    return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (tab === 'orders' || tab === 'kds') {
+      const interval = setInterval(loadOrders, 10000);
+      return () => clearInterval(interval);
+    }
+  }, [tab]);
 
   const loadVendorProfile = async () => {
     try {
@@ -76,16 +97,23 @@ export default function VendorDashboard() {
   };
 
   const handleReject = async (orderId: string) => {
-    if (!confirm('Are you sure you want to reject this order?')) return;
+    setRejectTarget(orderId);
+  };
+
+  const confirmReject = async () => {
+    if (!rejectTarget) return;
     try {
-      setActionLoading(orderId);
-      await vendorService.rejectOrder(orderId, 'Rejected by vendor');
+      setRejecting(true);
+      setActionLoading(rejectTarget);
+      await vendorService.rejectOrder(rejectTarget, 'Rejected by vendor');
       success('Order rejected');
       loadOrders();
     } catch (err: any) {
       showError(err.message || 'Failed to reject order');
     } finally {
       setActionLoading(null);
+      setRejecting(false);
+      setRejectTarget(null);
     }
   };
 
@@ -127,28 +155,29 @@ export default function VendorDashboard() {
     { key: 'orders', label: 'Orders', icon: '📋' },
     { key: 'kds', label: 'Kitchen', icon: '🍳' },
     { key: 'menu', label: 'Menu', icon: '🍽️' },
+    { key: 'scheduled', label: 'Scheduled', icon: '📅' },
     { key: 'analytics', label: 'Analytics', icon: '📊' },
     { key: 'inventory', label: 'Inventory', icon: '📦' },
     { key: 'profile', label: 'Profile', icon: '⚙️' },
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* Header */}
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
             {vendor ? vendor.name : 'Vendor Dashboard'}
           </h1>
           {vendor && (
-            <p className="text-sm text-gray-500 mt-1">
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
               {vendor.active ? '🟢 Active' : '🔴 Inactive'} · {vendor.menuItemCount} menu items
             </p>
           )}
         </div>
 
         {/* Tab navigation */}
-        <div className="border-b border-gray-200 mb-6">
+        <div className="border-b border-gray-200 dark:border-gray-700 mb-6">
           <nav className="flex gap-6">
             {tabs.map((t) => (
               <button
@@ -157,7 +186,7 @@ export default function VendorDashboard() {
                 className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${
                   tab === t.key
                     ? 'border-primary-600 text-primary-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
                 <span className="mr-1.5">{t.icon}</span>
@@ -197,16 +226,16 @@ export default function VendorDashboard() {
         )}
 
         {tab === 'kds' && !vendor && (
-          <div className="bg-white rounded-lg shadow-md p-12 text-center">
-            <p className="text-gray-600">Create your restaurant profile first.</p>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-12 text-center">
+            <p className="text-gray-600 dark:text-gray-300">Create your restaurant profile first.</p>
           </div>
         )}
 
         {tab === 'menu' && vendor && <VendorMenuManagement vendor={vendor} />}
 
         {tab === 'menu' && !vendor && (
-          <div className="bg-white rounded-lg shadow-md p-12 text-center">
-            <p className="text-gray-600 mb-4">Create your restaurant profile first before adding menu items.</p>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-12 text-center">
+            <p className="text-gray-600 dark:text-gray-300 mb-4">Create your restaurant profile first before adding menu items.</p>
             <button
               onClick={() => setTab('profile')}
               className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
@@ -218,6 +247,10 @@ export default function VendorDashboard() {
 
         {tab === 'analytics' && vendor && (
           <VendorAnalytics vendorId={vendor.id} />
+        )}
+
+        {tab === 'scheduled' && vendor && (
+          <ScheduledOrdersTab vendorId={vendor.id} />
         )}
 
         {tab === 'inventory' && vendor && (
@@ -235,6 +268,18 @@ export default function VendorDashboard() {
             }}
           />
         )}
+
+        {/* Reject Confirmation Dialog */}
+        <ConfirmDialog
+          open={!!rejectTarget}
+          title="Reject Order"
+          message="Are you sure you want to reject this order? The customer will be notified."
+          confirmLabel="Reject"
+          variant="danger"
+          loading={rejecting}
+          onConfirm={confirmReject}
+          onCancel={() => setRejectTarget(null)}
+        />
       </div>
     </div>
   );
@@ -265,8 +310,8 @@ function OrdersTab({
 }: OrdersTabProps) {
   if (!vendor) {
     return (
-      <div className="bg-white rounded-lg shadow-md p-12 text-center">
-        <p className="text-gray-600">Create your restaurant profile first to start receiving orders.</p>
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-12 text-center">
+        <p className="text-gray-600 dark:text-gray-300">Create your restaurant profile first to start receiving orders.</p>
       </div>
     );
   }
@@ -281,10 +326,10 @@ function OrdersTab({
 
   if (orders.length === 0) {
     return (
-      <div className="bg-white rounded-lg shadow-md p-12 text-center">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-12 text-center">
         <div className="text-5xl mb-4">📭</div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">No orders yet</h3>
-        <p className="text-gray-500">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">No orders yet</h3>
+        <p className="text-gray-500 dark:text-gray-400">
           Orders from customers will appear here. Make sure you have menu items available!
         </p>
       </div>
@@ -300,14 +345,14 @@ function OrdersTab({
   return (
     <div className="space-y-4">
       {sorted.map((order) => (
-        <div key={order.id} className="bg-white rounded-lg shadow-md p-6">
+        <div key={order.id} className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
           <div className="flex justify-between items-start mb-4">
             <div>
               <h3 className="text-lg font-bold">
                 Order #{order.orderNumber || order.id.substring(0, 8)}
               </h3>
-              <p className="text-sm text-gray-600">{formatDateTime(order.createdAt)}</p>
-              <p className="text-sm text-gray-900 mt-1">{order.customerName}</p>
+              <p className="text-sm text-gray-600 dark:text-gray-300">{formatDateTime(order.createdAt)}</p>
+              <p className="text-sm text-gray-900 dark:text-white mt-1">{order.customerName}</p>
             </div>
             <span
               className={`px-3 py-1 rounded-full text-sm font-medium ${
@@ -332,7 +377,7 @@ function OrdersTab({
             <h4 className="font-medium mb-2">Items:</h4>
             <ul className="text-sm space-y-1">
               {order.items.map((item) => (
-                <li key={item.id} className="text-gray-700">
+                <li key={item.id} className="text-gray-700 dark:text-gray-200">
                   {item.quantity}x {item.name}
                 </li>
               ))}
@@ -416,10 +461,10 @@ function KDSView({ orders, actionLoading, onAccept, onMarkPreparing, onMarkReady
 
   if (kdsOrders.length === 0) {
     return (
-      <div className="bg-white rounded-lg shadow-md p-12 text-center">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-12 text-center">
         <div className="text-5xl mb-4">🍳</div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">Kitchen is clear</h3>
-        <p className="text-gray-500">Active orders will appear here in real time.</p>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Kitchen is clear</h3>
+        <p className="text-gray-500 dark:text-gray-400">Active orders will appear here in real time.</p>
       </div>
     );
   }
@@ -430,9 +475,9 @@ function KDSView({ orders, actionLoading, onAccept, onMarkPreparing, onMarkReady
         const colOrders = kdsOrders.filter((o) => o.status === col.status);
         return (
           <div key={col.status}>
-            <h3 className={`text-sm font-bold uppercase tracking-wider mb-3 text-gray-600`}>
+            <h3 className={`text-sm font-bold uppercase tracking-wider mb-3 text-gray-600 dark:text-gray-300`}>
               {col.label}{' '}
-              <span className="text-gray-400">({colOrders.length})</span>
+              <span className="text-gray-400 dark:text-gray-500">({colOrders.length})</span>
             </h3>
             <div className="space-y-3">
               {colOrders.map((order) => (
@@ -444,7 +489,7 @@ function KDSView({ orders, actionLoading, onAccept, onMarkPreparing, onMarkReady
                     <span className="text-lg font-bold">
                       #{order.orderNumber || order.id.substring(0, 6)}
                     </span>
-                    <span className="text-xs text-gray-500">
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
                       {formatDateTime(order.createdAt)}
                     </span>
                   </div>
@@ -485,12 +530,82 @@ function KDSView({ orders, actionLoading, onAccept, onMarkPreparing, onMarkReady
                 </div>
               ))}
               {colOrders.length === 0 && (
-                <p className="text-sm text-gray-400 text-center py-4">—</p>
+                <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-4">—</p>
               )}
             </div>
           </div>
         );
       })}
+    </div>
+  );
+}
+
+// ── Scheduled Orders Tab ───────────────────────────────────────────────
+
+function ScheduledOrdersTab({ vendorId }: { vendorId: string }) {
+  const [orders, setOrders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    vendorService
+      .getScheduledOrders(vendorId)
+      .then(setOrders)
+      .catch(() => setOrders([]))
+      .finally(() => setLoading(false));
+  }, [vendorId]);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-12">
+        <LoadingSpinner size="lg" />
+      </div>
+    );
+  }
+
+  if (orders.length === 0) {
+    return (
+      <EmptyState
+        icon="📅"
+        title="No scheduled orders"
+        description="Upcoming scheduled orders will appear here."
+      />
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {orders.map((order: any) => (
+        <div key={order.id} className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+          <div className="flex justify-between items-start mb-3">
+            <div>
+              <h3 className="text-lg font-bold">
+                Order #{order.orderNumber || order.id?.substring(0, 8)}
+              </h3>
+              <p className="text-sm text-gray-900 dark:text-white mt-1">{order.customerName}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-sm font-medium text-orange-600">
+                📅 {order.scheduledTime ? new Date(order.scheduledTime).toLocaleString() : 'N/A'}
+              </p>
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                {order.status}
+              </span>
+            </div>
+          </div>
+          <div className="mb-3">
+            <ul className="text-sm space-y-1">
+              {(order.items || []).map((item: any, i: number) => (
+                <li key={i} className="text-gray-700 dark:text-gray-200">
+                  {item.quantity}x {item.name}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <p className="text-lg font-bold text-primary-600">
+            {formatCurrencyCompact(order.totalCents || 0)}
+          </p>
+        </div>
+      ))}
     </div>
   );
 }

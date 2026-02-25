@@ -125,6 +125,27 @@ export const orderService = {
     const response = await api.get<any, DeliveryProofDTO | null>(`/orders/${orderId}/proof`);
     return response;
   },
+
+  /**
+   * Validate a scheduled time for an order.
+   * POST /orders/validate-schedule
+   */
+  validateSchedule: async (scheduledTime: string, vendorId: string): Promise<{ valid: boolean; message: string }> => {
+    const response = await api.post<any, any>('/orders/validate-schedule', {
+      scheduledTime,
+      vendorId,
+    });
+    return response?.data ?? response;
+  },
+
+  /**
+   * Manually assign a driver to an order (admin).
+   * POST /orders/:orderId/assign/:driverId
+   */
+  assignDriver: async (orderId: string, driverId: string): Promise<OrderDTO> => {
+    const response = await api.post<any, OrderDTO>(`/orders/${orderId}/assign/${driverId}`);
+    return response;
+  },
 };
 
 export default orderService;

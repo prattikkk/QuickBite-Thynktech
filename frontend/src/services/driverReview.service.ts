@@ -29,4 +29,20 @@ export const driverReviewService = {
   async disputeReview(reviewId: string, reason: string): Promise<DriverReviewDTO> {
     return api.put(`/driver-reviews/${reviewId}/dispute`, { reason }) as Promise<DriverReviewDTO>;
   },
+
+  /** Get all driver reviews across all drivers (admin moderation) */
+  async getAllReviews(page = 0, _size = 100): Promise<{ content: DriverReviewDTO[]; totalElements: number }> {
+    // Aggregate driver reviews from available drivers
+    const res = await api.get('/admin/users', { params: { role: 'DRIVER', page: 0, size: 100 } }) as any;
+    const drivers = res?.content || (Array.isArray(res) ? res : []);
+    const allReviews: DriverReviewDTO[] = [];
+    for (const d of drivers.slice(0, 20)) {
+      try {
+        const reviews = await api.get(`/drivers/${d.id}/reviews`, { params: { page, size: 50 } }) as any;
+        const list = reviews?.content || (Array.isArray(reviews) ? reviews : []);
+        allReviews.push(...list.map((r: any) => ({ ...r, driverName: d.fullName || d.name })));
+      } catch { /* skip */ }
+    }
+    return { content: allReviews, totalElements: allReviews.length };
+  },
 };
