@@ -11,7 +11,7 @@ COPY src src
 RUN mvn -B -DskipTests package
 
 # ── Stage 2: runtime ───────────────────────────────────────────
-FROM eclipse-temurin:17-jre
+FROM eclipse-temurin:25-jre
 WORKDIR /app
 
 # Create non-root user
