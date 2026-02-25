@@ -25,6 +25,12 @@ export default function Settings() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [darkMode, setDarkMode] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('theme') === 'dark' || document.documentElement.classList.contains('dark');
+    }
+    return false;
+  });
 
   useEffect(() => {
     loadPreferences();
@@ -62,6 +68,13 @@ export default function Settings() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const toggleDarkMode = () => {
+    const next = !darkMode;
+    setDarkMode(next);
+    document.documentElement.classList.toggle('dark', next);
+    localStorage.setItem('theme', next ? 'dark' : 'light');
   };
 
   if (loading) {
@@ -143,6 +156,36 @@ export default function Settings() {
             </button>
           </div>
         ))}
+      </div>
+
+      {/* Dark Mode */}
+      <div className="mt-6 bg-white rounded-lg shadow divide-y divide-gray-100">
+        <div className="px-6 py-4">
+          <h2 className="text-lg font-semibold text-gray-800">Appearance</h2>
+          <p className="text-sm text-gray-500">Customize the look and feel</p>
+        </div>
+        <div className="flex items-center justify-between px-6 py-4 hover:bg-gray-50 transition-colors">
+          <div className="flex-1 min-w-0 mr-4">
+            <p className="font-medium text-gray-900">Dark Mode</p>
+            <p className="text-sm text-gray-500">Use a darker color scheme that's easier on your eyes</p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={darkMode}
+            aria-label={`Dark mode: ${darkMode ? 'enabled' : 'disabled'}`}
+            onClick={toggleDarkMode}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 ${
+              darkMode ? 'bg-primary-600' : 'bg-gray-300'
+            } cursor-pointer`}
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                darkMode ? 'translate-x-6' : 'translate-x-1'
+              }`}
+            />
+          </button>
+        </div>
       </div>
     </div>
   );

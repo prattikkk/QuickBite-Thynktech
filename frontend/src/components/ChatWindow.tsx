@@ -7,6 +7,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { chatService } from '../services/chat.service';
 import type { ChatMessageDTO, ChatRoomDTO } from '../types/phase4.types';
 import { useAuthStore } from '../store';
+import { useChatMessages } from '../hooks/useChatMessages';
 
 export interface ChatWindowProps {
   orderId: string;
@@ -24,6 +25,17 @@ export default function ChatWindow({ orderId, otherUserId, otherUserName, roomTy
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // WebSocket integration — receives live messages when available
+  const onWsMessage = useCallback((msg: any) => {
+    setMessages((prev) => {
+      // Avoid duplicates
+      if (prev.some((m) => m.id === msg.id)) return prev;
+      return [...prev, msg];
+    });
+  }, []);
+
+  const { connected: wsConnected } = useChatMessages({ roomId: room?.id || null, onMessage: onWsMessage });
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -55,12 +67,12 @@ export default function ChatWindow({ orderId, otherUserId, otherUserName, roomTy
     init();
   }, [orderId, otherUserId, roomType, loadMessages]);
 
-  // Poll for new messages every 5s
+  // Poll for new messages every 5s (fallback when WebSocket not connected)
   useEffect(() => {
-    if (!room) return;
+    if (!room || wsConnected) return;
     const interval = setInterval(() => loadMessages(room.id), 5000);
     return () => clearInterval(interval);
-  }, [room, loadMessages]);
+  }, [room, loadMessages, wsConnected]);
 
   // Scroll on new messages
   useEffect(() => {
@@ -102,7 +114,10 @@ export default function ChatWindow({ orderId, otherUserId, otherUserName, roomTy
       <div className="flex items-center justify-between px-4 py-3 bg-primary-600 text-white rounded-t-lg">
         <div>
           <p className="font-medium text-sm">{otherUserName || 'Chat'}</p>
-          <p className="text-xs opacity-75">{roomType === 'CUSTOMER_DRIVER' ? 'Driver' : 'Vendor'}</p>
+          <p className="text-xs opacity-75">
+            {roomType === 'CUSTOMER_DRIVER' ? 'Driver' : 'Vendor'}
+            {wsConnected && ' • live'}
+          </p>
         </div>
         {onClose && (
           <button onClick={onClose} className="text-white hover:text-gray-200">

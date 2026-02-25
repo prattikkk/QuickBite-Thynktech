@@ -30,4 +30,14 @@ export const modifierService = {
   async deleteModifier(modifierId: string): Promise<void> {
     await api.delete(`/modifiers/${modifierId}`);
   },
+
+  /** Update a modifier group */
+  async updateGroup(groupId: string, data: { name: string; required: boolean; minSelections: number; maxSelections: number }): Promise<ModifierGroupDTO> {
+    return api.put(`/modifier-groups/${groupId}`, data) as Promise<ModifierGroupDTO>;
+  },
+
+  /** Update a modifier */
+  async updateModifier(modifierId: string, data: { name: string; priceCents: number; available: boolean }): Promise<unknown> {
+    return api.put(`/modifiers/${modifierId}`, data) as Promise<unknown>;
+  },
 };

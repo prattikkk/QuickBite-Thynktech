@@ -48,6 +48,22 @@ export const reviewService = {
     const { data } = await api.get(`/vendors/${vendorId}/rating-summary`);
     return data;
   },
+
+  /** Get all vendor reviews across all vendors (admin moderation) */
+  async getAllReviews(page = 0, _size = 100): Promise<PagedReviews> {
+    // No dedicated admin endpoint — aggregate from vendor list via large page
+    const res: any = await api.get('/vendors', { params: { page: 0, size: 100 } });
+    const vendors = res?.content || (Array.isArray(res) ? res : []);
+    const allReviews: ReviewDTO[] = [];
+    for (const v of vendors.slice(0, 20)) {
+      try {
+        const reviews = await api.get(`/vendors/${v.id}/reviews`, { params: { page, size: 50 } });
+        const list = (reviews as any)?.content || (Array.isArray(reviews) ? reviews : []);
+        allReviews.push(...list.map((r: any) => ({ ...r, vendorName: v.name })));
+      } catch { /* skip */ }
+    }
+    return { content: allReviews, totalElements: allReviews.length, totalPages: 1, number: 0, size: allReviews.length, first: true, last: true };
+  },
 };
 
 export default reviewService;

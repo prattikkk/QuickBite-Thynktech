@@ -1,19 +1,22 @@
 /**
- * VendorDashboard — tabbed layout: Orders | Menu | Profile
+ * VendorDashboard — tabbed layout: Orders | KDS | Menu | Scheduled | Analytics | Inventory | Profile
  */
 
 import { useState, useEffect } from 'react';
 import { vendorService } from '../services';
 import { OrderDTO, VendorDTO } from '../types';
 import { LoadingSpinner } from '../components';
+import ConfirmDialog from '../components/ConfirmDialog';
+import EmptyState from '../components/EmptyState';
 import { formatCurrencyCompact, formatDateTime } from '../utils';
 import { useToastStore } from '../store';
+import { useVendorOrders } from '../hooks/useVendorOrders';
 import VendorMenuManagement from './VendorMenuManagement';
 import VendorProfile from './VendorProfile';
 import VendorAnalytics from '../components/VendorAnalytics';
 import InventoryManagement from '../components/InventoryManagement';
 
-type Tab = 'orders' | 'kds' | 'menu' | 'analytics' | 'inventory' | 'profile';
+type Tab = 'orders' | 'kds' | 'menu' | 'scheduled' | 'analytics' | 'inventory' | 'profile';
 
 export default function VendorDashboard() {
   const [tab, setTab] = useState<Tab>('orders');
@@ -22,7 +25,20 @@ export default function VendorDashboard() {
   const [orders, setOrders] = useState<OrderDTO[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [rejectTarget, setRejectTarget] = useState<string | null>(null);
+  const [rejecting, setRejecting] = useState(false);
   const { success, error: showError } = useToastStore();
+
+  // WebSocket hook for real-time KDS updates (M4)
+  useVendorOrders({
+    vendorId: vendor?.id ?? null,
+    enabled: !!vendor,
+    onNewOrder: () => {
+      success('New order received!');
+      loadOrders();
+    },
+    onOrderUpdate: () => loadOrders(),
+  });
 
   // Load vendor profile
   useEffect(() => {
@@ -76,16 +92,23 @@ export default function VendorDashboard() {
   };
 
   const handleReject = async (orderId: string) => {
-    if (!confirm('Are you sure you want to reject this order?')) return;
+    setRejectTarget(orderId);
+  };
+
+  const confirmReject = async () => {
+    if (!rejectTarget) return;
     try {
-      setActionLoading(orderId);
-      await vendorService.rejectOrder(orderId, 'Rejected by vendor');
+      setRejecting(true);
+      setActionLoading(rejectTarget);
+      await vendorService.rejectOrder(rejectTarget, 'Rejected by vendor');
       success('Order rejected');
       loadOrders();
     } catch (err: any) {
       showError(err.message || 'Failed to reject order');
     } finally {
       setActionLoading(null);
+      setRejecting(false);
+      setRejectTarget(null);
     }
   };
 
@@ -127,6 +150,7 @@ export default function VendorDashboard() {
     { key: 'orders', label: 'Orders', icon: '📋' },
     { key: 'kds', label: 'Kitchen', icon: '🍳' },
     { key: 'menu', label: 'Menu', icon: '🍽️' },
+    { key: 'scheduled', label: 'Scheduled', icon: '📅' },
     { key: 'analytics', label: 'Analytics', icon: '📊' },
     { key: 'inventory', label: 'Inventory', icon: '📦' },
     { key: 'profile', label: 'Profile', icon: '⚙️' },
@@ -220,6 +244,10 @@ export default function VendorDashboard() {
           <VendorAnalytics vendorId={vendor.id} />
         )}
 
+        {tab === 'scheduled' && vendor && (
+          <ScheduledOrdersTab vendorId={vendor.id} />
+        )}
+
         {tab === 'inventory' && vendor && (
           <InventoryManagement vendorId={vendor.id} />
         )}
@@ -235,6 +263,18 @@ export default function VendorDashboard() {
             }}
           />
         )}
+
+        {/* Reject Confirmation Dialog */}
+        <ConfirmDialog
+          open={!!rejectTarget}
+          title="Reject Order"
+          message="Are you sure you want to reject this order? The customer will be notified."
+          confirmLabel="Reject"
+          variant="danger"
+          loading={rejecting}
+          onConfirm={confirmReject}
+          onCancel={() => setRejectTarget(null)}
+        />
       </div>
     </div>
   );
@@ -491,6 +531,76 @@ function KDSView({ orders, actionLoading, onAccept, onMarkPreparing, onMarkReady
           </div>
         );
       })}
+    </div>
+  );
+}
+
+// ── Scheduled Orders Tab ───────────────────────────────────────────────
+
+function ScheduledOrdersTab({ vendorId }: { vendorId: string }) {
+  const [orders, setOrders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    vendorService
+      .getScheduledOrders(vendorId)
+      .then(setOrders)
+      .catch(() => setOrders([]))
+      .finally(() => setLoading(false));
+  }, [vendorId]);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-12">
+        <LoadingSpinner size="lg" />
+      </div>
+    );
+  }
+
+  if (orders.length === 0) {
+    return (
+      <EmptyState
+        icon="📅"
+        title="No scheduled orders"
+        description="Upcoming scheduled orders will appear here."
+      />
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {orders.map((order: any) => (
+        <div key={order.id} className="bg-white rounded-lg shadow-md p-6">
+          <div className="flex justify-between items-start mb-3">
+            <div>
+              <h3 className="text-lg font-bold">
+                Order #{order.orderNumber || order.id?.substring(0, 8)}
+              </h3>
+              <p className="text-sm text-gray-900 mt-1">{order.customerName}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-sm font-medium text-orange-600">
+                📅 {order.scheduledTime ? new Date(order.scheduledTime).toLocaleString() : 'N/A'}
+              </p>
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                {order.status}
+              </span>
+            </div>
+          </div>
+          <div className="mb-3">
+            <ul className="text-sm space-y-1">
+              {(order.items || []).map((item: any, i: number) => (
+                <li key={i} className="text-gray-700">
+                  {item.quantity}x {item.name}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <p className="text-lg font-bold text-primary-600">
+            {formatCurrencyCompact(order.totalCents || 0)}
+          </p>
+        </div>
+      ))}
     </div>
   );
 }

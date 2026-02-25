@@ -106,6 +106,24 @@ export default function Header() {
                     >
                       Refunds
                     </Link>
+                    <Link
+                      to="/admin/promos"
+                      className="text-gray-700 hover:text-primary-600 transition-colors font-medium"
+                    >
+                      Promos
+                    </Link>
+                    <Link
+                      to="/admin/commissions"
+                      className="text-gray-700 hover:text-primary-600 transition-colors font-medium"
+                    >
+                      Commissions
+                    </Link>
+                    <Link
+                      to="/admin/reviews"
+                      className="text-gray-700 hover:text-primary-600 transition-colors font-medium"
+                    >
+                      Reviews
+                    </Link>
                   </>
                 )}
 
@@ -273,6 +291,27 @@ export default function Header() {
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       Refunds
+                    </Link>
+                    <Link
+                      to="/admin/promos"
+                      className="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      Promos
+                    </Link>
+                    <Link
+                      to="/admin/commissions"
+                      className="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      Commissions
+                    </Link>
+                    <Link
+                      to="/admin/reviews"
+                      className="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      Reviews
                     </Link>
                   </>
                 )}

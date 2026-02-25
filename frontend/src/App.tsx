@@ -32,6 +32,9 @@ const Notifications = lazy(() => import('./pages/Notifications'));
 const AdminReporting = lazy(() => import('./pages/AdminReporting'));
 const Settings = lazy(() => import('./pages/Settings'));
 const AdminRefunds = lazy(() => import('./pages/AdminRefunds'));
+const AdminPromos = lazy(() => import('./pages/AdminPromos'));
+const AdminCommissions = lazy(() => import('./pages/AdminCommissions'));
+const AdminReviewModeration = lazy(() => import('./pages/AdminReviewModeration'));
 
 function App() {
   const loadFromStorage = useAuthStore((state) => state.loadFromStorage);
@@ -202,6 +205,30 @@ function App() {
               element={
                 <ProtectedRoute requiredRole="ADMIN">
                   <AdminRefunds />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/promos"
+              element={
+                <ProtectedRoute requiredRole="ADMIN">
+                  <AdminPromos />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/commissions"
+              element={
+                <ProtectedRoute requiredRole="ADMIN">
+                  <AdminCommissions />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/reviews"
+              element={
+                <ProtectedRoute requiredRole="ADMIN">
+                  <AdminReviewModeration />
                 </ProtectedRoute>
               }
             />

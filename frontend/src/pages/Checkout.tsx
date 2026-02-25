@@ -48,6 +48,7 @@ function CheckoutForm() {
   const stripe = useStripe();
   const elements = useElements();
   const { items, clearCart, getSubtotalCents } = useCartStore();
+  const vendorId = useCartStore((s) => s.vendorId);
   const { success, error: showError } = useToastStore();
 
   const [addresses, setAddresses] = useState<AddressDTO[]>([]);
@@ -172,6 +173,22 @@ function CheckoutForm() {
 
     try {
       setSubmitting(true);
+
+      // 0. Validate scheduled time if scheduling
+      if (scheduleOrder && scheduledTime && vendorId) {
+        try {
+          const validation = await orderService.validateSchedule(scheduledTime, vendorId);
+          if (!validation.valid) {
+            showError(validation.message || 'Scheduled time is invalid');
+            setSubmitting(false);
+            return;
+          }
+        } catch (err: any) {
+          showError(err.message || 'Failed to validate scheduled time');
+          setSubmitting(false);
+          return;
+        }
+      }
 
       // 1. Create the order on the backend
       const orderData = {

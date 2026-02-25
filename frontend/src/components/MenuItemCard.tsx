@@ -93,6 +93,7 @@ export const MenuItemCard: React.FC<MenuItemCardProps> = ({
           <button
             onClick={handleAddClick}
             disabled={disabled || !menuItem.available}
+            aria-label={`Add ${menuItem.name} to cart`}
             className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
               disabled || !menuItem.available
                 ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
@@ -101,6 +102,7 @@ export const MenuItemCard: React.FC<MenuItemCardProps> = ({
           >
             Add to Cart
           </button>
+          {/* sr-only for screen readers */}
         </div>
       </div>
     </div>
