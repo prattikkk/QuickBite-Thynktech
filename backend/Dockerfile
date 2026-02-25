@@ -1,5 +1,5 @@
 # ── Stage 1: build ──────────────────────────────────────────────
-FROM maven:3.9.3-eclipse-temurin-17 AS build
+FROM maven:3.9.11-eclipse-temurin-25 AS build
 WORKDIR /app
 
 # Copy dependency descriptors first (layer cache)
