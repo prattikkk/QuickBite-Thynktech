@@ -2,10 +2,16 @@
  * Vendor Profile — create / edit restaurant details
  */
 
-import { useState, useEffect, FormEvent } from 'react';
+import { useState, useEffect, useRef, FormEvent } from 'react';
 import { vendorService } from '../services';
 import { VendorDTO, VendorCreateRequest, VendorUpdateRequest } from '../types';
 import { useToastStore } from '../store';
+import mapboxgl from 'mapbox-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
+
+const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || '';
+
+mapboxgl.accessToken = MAPBOX_TOKEN;
 
 interface Props {
   vendor: VendorDTO | null;
@@ -15,6 +21,8 @@ interface Props {
 export default function VendorProfile({ vendor, onProfileUpdated }: Props) {
   const { success, error: showError } = useToastStore();
   const [saving, setSaving] = useState(false);
+  const radiusMapContainer = useRef<HTMLDivElement>(null);
+  const radiusMapRef = useRef<mapboxgl.Map | null>(null);
 
   const [form, setForm] = useState({
     name: '',
@@ -39,6 +47,129 @@ export default function VendorProfile({ vendor, onProfileUpdated }: Props) {
       });
     }
   }, [vendor]);
+
+  // ── Delivery radius Mapbox map ──────────────────────────────────
+  useEffect(() => {
+    if (!radiusMapContainer.current || !vendor?.lat || !vendor?.lng) return;
+
+    // Create or update the map
+    if (!radiusMapRef.current) {
+      const map = new mapboxgl.Map({
+        container: radiusMapContainer.current,
+        style: 'mapbox://styles/mapbox/streets-v12',
+        center: [vendor.lng, vendor.lat],
+        zoom: 13,
+        attributionControl: false,
+        interactive: true,
+      });
+
+      map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right');
+
+      // Restaurant marker
+      const el = document.createElement('div');
+      el.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;width:36px;height:36px;
+        background:#f97316;border-radius:50%;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.3);">
+        <span style="font-size:18px">🍽️</span>
+      </div>`;
+      new mapboxgl.Marker({ element: el, anchor: 'center' })
+        .setLngLat([vendor.lng, vendor.lat])
+        .addTo(map);
+
+      map.on('load', () => {
+        // Delivery radius circle
+        map.addSource('delivery-radius', {
+          type: 'geojson',
+          data: createCircleGeoJSON(vendor.lng, vendor.lat, radiusKm()),
+        });
+        map.addLayer({
+          id: 'delivery-radius-fill',
+          type: 'fill',
+          source: 'delivery-radius',
+          paint: {
+            'fill-color': '#3b82f6',
+            'fill-opacity': 0.12,
+          },
+        });
+        map.addLayer({
+          id: 'delivery-radius-border',
+          type: 'line',
+          source: 'delivery-radius',
+          paint: {
+            'line-color': '#3b82f6',
+            'line-width': 2,
+            'line-dasharray': [3, 2],
+          },
+        });
+      });
+
+      radiusMapRef.current = map;
+    }
+
+    return () => {
+      // Cleanup only on unmount
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vendor?.lat, vendor?.lng]);
+
+  // Update radius circle when deliveryRadiusKm changes
+  useEffect(() => {
+    if (!radiusMapRef.current || !vendor?.lat || !vendor?.lng) return;
+    const map = radiusMapRef.current;
+    if (!map.isStyleLoaded()) return;
+
+    const source = map.getSource('delivery-radius') as mapboxgl.GeoJSONSource | undefined;
+    if (source) {
+      source.setData(createCircleGeoJSON(vendor.lng, vendor.lat, radiusKm()));
+      // Adjust zoom to fit radius
+      const km = radiusKm();
+      if (km > 0) {
+        const zoom = km > 20 ? 10 : km > 10 ? 11 : km > 5 ? 12 : km > 2 ? 13 : 14;
+        map.flyTo({ center: [vendor.lng, vendor.lat], zoom, duration: 800 });
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.deliveryRadiusKm, vendor?.lat, vendor?.lng]);
+
+  // Cleanup map on unmount
+  useEffect(() => {
+    return () => {
+      radiusMapRef.current?.remove();
+      radiusMapRef.current = null;
+    };
+  }, []);
+
+  const radiusKm = () => {
+    const v = parseFloat(form.deliveryRadiusKm);
+    return isNaN(v) || v <= 0 ? 0 : v;
+  };
+
+  /** Generate a GeoJSON circle polygon (64 points) */
+  function createCircleGeoJSON(lng: number, lat: number, radiusKm: number): GeoJSON.FeatureCollection {
+    if (radiusKm <= 0) {
+      return { type: 'FeatureCollection', features: [] };
+    }
+    const points = 64;
+    const coords: [number, number][] = [];
+    const km = radiusKm;
+    for (let i = 0; i <= points; i++) {
+      const angle = (i / points) * 2 * Math.PI;
+      const dx = km * Math.cos(angle);
+      const dy = km * Math.sin(angle);
+      const dlng = dx / (111.32 * Math.cos((lat * Math.PI) / 180));
+      const dlat = dy / 110.574;
+      coords.push([lng + dlng, lat + dlat]);
+    }
+    return {
+      type: 'FeatureCollection',
+      features: [
+        {
+          type: 'Feature',
+          geometry: { type: 'Polygon', coordinates: [coords] },
+          properties: {},
+        },
+      ],
+    };
+  }
 
   const parseOpenHours = (text: string): Record<string, string> => {
     const result: Record<string, string> = {};
@@ -174,6 +305,23 @@ export default function VendorProfile({ vendor, onProfileUpdated }: Props) {
           />
           <p className="text-xs text-gray-400 mt-1">Maximum distance you deliver to from your restaurant</p>
         </div>
+
+        {/* Delivery radius map preview */}
+        {vendor?.lat != null && vendor?.lng != null && (
+          <div className="rounded-xl overflow-hidden border border-gray-200 shadow-sm">
+            <div className="px-3 py-2 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+              <span className="text-xs font-medium text-gray-600 flex items-center gap-1.5">
+                📍 Delivery Area Preview
+              </span>
+              {radiusKm() > 0 && (
+                <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+                  {radiusKm()} km radius
+                </span>
+              )}
+            </div>
+            <div ref={radiusMapContainer} style={{ height: '220px', width: '100%' }} />
+          </div>
+        )}
 
         {vendor && (
           <div className="bg-gray-50 rounded-lg p-4 text-sm text-gray-600">

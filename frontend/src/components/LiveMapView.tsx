@@ -1,18 +1,28 @@
 /**
- * LiveMapView — Leaflet-free live driver tracking map using Canvas + OSM tile overlay.
+ * LiveMapView — Interactive Mapbox GL map with live driver tracking.
  * Uses STOMP WebSocket to receive driver location updates in real time.
- * Falls back to polling GET /api/drivers/orders/{orderId}/location every 10s when WS disabled.
+ * Falls back to polling GET /api/drivers/orders/{orderId}/location every 10s.
  *
  * Shows:
- *  • Static background tile via OpenStreetMap embed iframe
- *  • Animated pulsing driver marker overlaid on top using CSS
- *  • Distance badge and accuracy ring
+ *  • Full Mapbox GL interactive map with smooth transitions
+ *  • Animated pulsing driver marker with heading
+ *  • Vendor origin marker (restaurant icon)
+ *  • Delivery destination marker (red pin)
+ *  • Route line between vendor → driver → destination
+ *  • Distance badge (haversine km/m)
+ *  • Live GPS status indicator
  */
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import api from '../services/api';
+import mapboxgl from 'mapbox-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
+
+const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || '';
+
+mapboxgl.accessToken = MAPBOX_TOKEN;
 
 interface LiveMapViewProps {
   orderId: string;
@@ -40,19 +50,6 @@ function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): nu
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-function latLngToPercent(
-  lat: number,
-  lng: number,
-  minLat: number,
-  maxLat: number,
-  minLng: number,
-  maxLng: number,
-) {
-  const x = ((lng - minLng) / (maxLng - minLng)) * 100;
-  const y = ((maxLat - lat) / (maxLat - minLat)) * 100;
-  return { x, y };
-}
-
 export default function LiveMapView({
   orderId,
   vendorLat,
@@ -64,32 +61,42 @@ export default function LiveMapView({
   driverLng: initDriverLng,
   className = '',
 }: LiveMapViewProps) {
+  const mapContainer = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<mapboxgl.Map | null>(null);
+  const driverMarkerRef = useRef<mapboxgl.Marker | null>(null);
+  const clientRef = useRef<Client | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
   const [driverPos, setDriverPos] = useState<{ lat: number; lng: number } | null>(
     initDriverLat != null && initDriverLng != null
       ? { lat: initDriverLat, lng: initDriverLng }
       : null,
   );
-  const clientRef = useRef<Client | null>(null);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [mapReady, setMapReady] = useState(false);
+
+  // Stable callback for updating driver position
+  const updateDriverPos = useCallback((lat: number, lng: number) => {
+    setDriverPos({ lat, lng });
+  }, []);
 
   // ── Poll REST fallback ────────────────────────────────────────────
-  const pollLocation = async () => {
+  const pollLocation = useCallback(async () => {
     try {
       const response = await api.get<any, any>(`/drivers/orders/${orderId}/location`);
       const data = response?.data ?? response;
       if (data && data.lat != null && data.lng != null) {
-        setDriverPos({ lat: Number(data.lat), lng: Number(data.lng) });
+        updateDriverPos(Number(data.lat), Number(data.lng));
       }
     } catch {
       // silently ignore
     }
-  };
+  }, [orderId, updateDriverPos]);
 
+  // ── WebSocket / Polling setup ─────────────────────────────────────
   useEffect(() => {
     if (!orderId) return;
 
     if (USE_WEBSOCKET) {
-      // ── STOMP WebSocket ─────────────────────────────────────────
       try {
         const token = localStorage.getItem('quickbite_token');
         const client = new Client({
@@ -102,7 +109,7 @@ export default function LiveMapView({
             try {
               const payload = JSON.parse(msg.body);
               if (payload.lat != null && payload.lng != null) {
-                setDriverPos({ lat: payload.lat, lng: payload.lng });
+                updateDriverPos(payload.lat, payload.lng);
               }
             } catch { /* ignore */ }
           });
@@ -111,55 +118,190 @@ export default function LiveMapView({
         clientRef.current = client;
       } catch { /* ignore */ }
 
+      // Also poll as supplement
+      pollLocation();
+      pollRef.current = setInterval(pollLocation, 15_000);
+
       return () => {
         clientRef.current?.deactivate();
         clientRef.current = null;
+        if (pollRef.current) clearInterval(pollRef.current);
       };
     } else {
-      // ── REST polling ────────────────────────────────────────────
       pollLocation();
       pollRef.current = setInterval(pollLocation, 10_000);
       return () => {
         if (pollRef.current) clearInterval(pollRef.current);
       };
     }
-  }, [orderId]);
+  }, [orderId, pollLocation, updateDriverPos]);
 
-  // ── Bounding box ──────────────────────────────────────────────────
-  const allLats = [vendorLat, deliveryLat, driverPos?.lat].filter((v) => v != null) as number[];
-  const allLngs = [vendorLng, deliveryLng, driverPos?.lng].filter((v) => v != null) as number[];
+  // ── Initialize Mapbox map ─────────────────────────────────────────
+  useEffect(() => {
+    if (!mapContainer.current) return;
+    if (mapRef.current) return; // already initialized
 
-  const hasCoords = allLats.length >= 2;
+    // Determine center
+    const centerLat = deliveryLat ?? vendorLat ?? 0;
+    const centerLng = deliveryLng ?? vendorLng ?? 0;
 
-  // Compute iframe embed bbox
-  const minLat = hasCoords ? Math.min(...allLats) - 0.008 : (deliveryLat ?? 0) - 0.01;
-  const maxLat = hasCoords ? Math.max(...allLats) + 0.008 : (deliveryLat ?? 0) + 0.01;
-  const minLng = hasCoords ? Math.min(...allLngs) - 0.008 : (deliveryLng ?? 0) - 0.01;
-  const maxLng = hasCoords ? Math.max(...allLngs) + 0.008 : (deliveryLng ?? 0) + 0.01;
+    if (centerLat === 0 && centerLng === 0) return;
 
-  const mapUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${minLng},${minLat},${maxLng},${maxLat}&layer=mapnik`;
+    const map = new mapboxgl.Map({
+      container: mapContainer.current,
+      style: 'mapbox://styles/mapbox/streets-v12',
+      center: [centerLng, centerLat],
+      zoom: 14,
+      attributionControl: false,
+    });
 
-  if (!deliveryLat && !vendorLat) {
-    return (
-      <div
-        className={`bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 text-sm ${className}`}
-        style={{ minHeight: '220px' }}
-      >
-        Map unavailable — coordinates not set
-      </div>
-    );
-  }
+    map.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-left');
+    map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right');
 
-  // ── Driver marker CSS position ────────────────────────────────────
-  const driverMarker =
-    driverPos != null
-      ? latLngToPercent(driverPos.lat, driverPos.lng, minLat, maxLat, minLng, maxLng)
-      : null;
+    map.on('load', () => {
+      setMapReady(true);
 
-  const deliveryMarker =
-    deliveryLat != null && deliveryLng != null
-      ? latLngToPercent(deliveryLat, deliveryLng, minLat, maxLat, minLng, maxLng)
-      : null;
+      // ── Add vendor marker ────────────────────────────────────────
+      if (vendorLat != null && vendorLng != null) {
+        const vendorEl = document.createElement('div');
+        vendorEl.innerHTML = `
+          <div style="display:flex;align-items:center;justify-content:center;width:36px;height:36px;
+            background:#f97316;border-radius:50%;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.3);
+            cursor:pointer" title="${vendorName || 'Restaurant'}">
+            <span style="font-size:18px">🍽️</span>
+          </div>`;
+        new mapboxgl.Marker({ element: vendorEl, anchor: 'center' })
+          .setLngLat([vendorLng, vendorLat])
+          .setPopup(new mapboxgl.Popup({ offset: 20 }).setHTML(
+            `<div style="padding:4px 8px;font-weight:600;font-size:13px">${vendorName || 'Restaurant'}</div>`
+          ))
+          .addTo(map);
+      }
+
+      // ── Add delivery destination marker ──────────────────────────
+      if (deliveryLat != null && deliveryLng != null) {
+        const destEl = document.createElement('div');
+        destEl.innerHTML = `
+          <div style="display:flex;flex-direction:column;align-items:center;">
+            <div style="width:28px;height:28px;background:#ef4444;border-radius:50% 50% 50% 0;
+              border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.3);transform:rotate(-45deg);
+              display:flex;align-items:center;justify-content:center;">
+              <span style="transform:rotate(45deg);font-size:12px;color:#fff;font-weight:bold">📍</span>
+            </div>
+            <div style="width:2px;height:6px;background:#ef4444;margin-top:-2px;"></div>
+          </div>`;
+        new mapboxgl.Marker({ element: destEl, anchor: 'bottom' })
+          .setLngLat([deliveryLng, deliveryLat])
+          .setPopup(new mapboxgl.Popup({ offset: 20 }).setHTML(
+            `<div style="padding:4px 8px;font-weight:600;font-size:13px">📍 Delivery Location</div>`
+          ))
+          .addTo(map);
+      }
+
+      // ── Add route line source ────────────────────────────────────
+      map.addSource('route', {
+        type: 'geojson',
+        data: {
+          type: 'Feature',
+          geometry: { type: 'LineString', coordinates: [] },
+          properties: {},
+        },
+      });
+      map.addLayer({
+        id: 'route-line',
+        type: 'line',
+        source: 'route',
+        layout: { 'line-join': 'round', 'line-cap': 'round' },
+        paint: { 'line-color': '#3b82f6', 'line-width': 3, 'line-dasharray': [2, 2] },
+      });
+
+      // ── Fit bounds to show all points ────────────────────────────
+      const bounds = new mapboxgl.LngLatBounds();
+      if (vendorLat != null && vendorLng != null) bounds.extend([vendorLng, vendorLat]);
+      if (deliveryLat != null && deliveryLng != null) bounds.extend([deliveryLng, deliveryLat]);
+      if (!bounds.isEmpty()) {
+        map.fitBounds(bounds, { padding: 60, maxZoom: 15 });
+      }
+    });
+
+    mapRef.current = map;
+
+    return () => {
+      map.remove();
+      mapRef.current = null;
+      driverMarkerRef.current = null;
+      setMapReady(false);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deliveryLat, deliveryLng, vendorLat, vendorLng, vendorName]);
+
+  // ── Update driver marker when driverPos changes ───────────────────
+  useEffect(() => {
+    if (!mapRef.current || !mapReady || !driverPos) return;
+    const map = mapRef.current;
+
+    // Create or update driver marker
+    if (!driverMarkerRef.current) {
+      const driverEl = document.createElement('div');
+      driverEl.className = 'driver-marker-live';
+      driverEl.innerHTML = `
+        <div style="position:relative;display:flex;align-items:center;justify-content:center;">
+          <div class="driver-pulse-ring" style="position:absolute;width:44px;height:44px;
+            border-radius:50%;background:rgba(59,130,246,0.25);animation:driverPulse 2s ease-out infinite;"></div>
+          <div style="width:32px;height:32px;background:#2563eb;border-radius:50%;border:3px solid #fff;
+            box-shadow:0 2px 10px rgba(37,99,235,0.5);display:flex;align-items:center;justify-content:center;
+            z-index:1;position:relative;">
+            <span style="font-size:16px">🛵</span>
+          </div>
+        </div>`;
+
+      // Add CSS animation if not already present
+      if (!document.getElementById('driver-pulse-css')) {
+        const style = document.createElement('style');
+        style.id = 'driver-pulse-css';
+        style.textContent = `
+          @keyframes driverPulse {
+            0% { transform: scale(0.8); opacity: 1; }
+            100% { transform: scale(2.2); opacity: 0; }
+          }
+        `;
+        document.head.appendChild(style);
+      }
+
+      driverMarkerRef.current = new mapboxgl.Marker({ element: driverEl, anchor: 'center' })
+        .setLngLat([driverPos.lng, driverPos.lat])
+        .addTo(map);
+    } else {
+      // Smooth update for marker position
+      driverMarkerRef.current.setLngLat([driverPos.lng, driverPos.lat]);
+    }
+
+    // Update route line: vendor → driver → delivery
+    const routeCoords: [number, number][] = [];
+    if (vendorLat != null && vendorLng != null) routeCoords.push([vendorLng, vendorLat]);
+    routeCoords.push([driverPos.lng, driverPos.lat]);
+    if (deliveryLat != null && deliveryLng != null) routeCoords.push([deliveryLng, deliveryLat]);
+
+    if (routeCoords.length >= 2) {
+      const routeSource = map.getSource('route') as mapboxgl.GeoJSONSource | undefined;
+      if (routeSource) {
+        routeSource.setData({
+          type: 'Feature',
+          geometry: { type: 'LineString', coordinates: routeCoords },
+          properties: {},
+        });
+      }
+    }
+
+    // Fit bounds to include driver
+    const bounds = new mapboxgl.LngLatBounds();
+    if (vendorLat != null && vendorLng != null) bounds.extend([vendorLng, vendorLat]);
+    bounds.extend([driverPos.lng, driverPos.lat]);
+    if (deliveryLat != null && deliveryLng != null) bounds.extend([deliveryLng, deliveryLat]);
+    if (!bounds.isEmpty()) {
+      map.fitBounds(bounds, { padding: 50, maxZoom: 16, duration: 1000 });
+    }
+  }, [driverPos, mapReady, vendorLat, vendorLng, deliveryLat, deliveryLng]);
 
   // Distance badge
   const distanceKm =
@@ -167,90 +309,61 @@ export default function LiveMapView({
       ? haversineKm(driverPos.lat, driverPos.lng, deliveryLat, deliveryLng)
       : null;
 
+  if (!deliveryLat && !vendorLat) {
+    return (
+      <div
+        className={`bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center text-gray-400 text-sm ${className}`}
+        style={{ minHeight: '220px' }}
+      >
+        Map unavailable — coordinates not set
+      </div>
+    );
+  }
+
   return (
-    <div className={`rounded-lg overflow-hidden border border-gray-200 ${className}`}>
+    <div className={`rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 shadow-sm ${className}`}>
       {/* Live status bar */}
-      {driverPos && (
-        <div className="flex items-center justify-between px-3 py-1.5 bg-green-50 border-b border-green-100">
-          <span className="flex items-center gap-1.5 text-xs font-medium text-green-700">
-            <span className="relative flex h-2.5 w-2.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500" />
-            </span>
-            Driver location live
-          </span>
-          {distanceKm != null && (
-            <span className="text-xs text-green-700 font-semibold">
-              {distanceKm < 1
-                ? `${Math.round(distanceKm * 1000)} m away`
-                : `${distanceKm.toFixed(1)} km away`}
-            </span>
-          )}
-        </div>
-      )}
-
-      {/* Map container with overlaid markers */}
-      <div className="relative" style={{ paddingBottom: '56.25%', minHeight: '200px' }}>
-        <iframe
-          src={mapUrl}
-          className="absolute inset-0 w-full h-full"
-          style={{ border: 0 }}
-          allowFullScreen
-          loading="lazy"
-          referrerPolicy="no-referrer-when-downgrade"
-          title="Live delivery map"
-        />
-
-        {/* Delivery destination marker */}
-        {deliveryMarker && (
-          <div
-            className="absolute z-10 pointer-events-none"
-            style={{
-              left: `calc(${deliveryMarker.x.toFixed(2)}% - 10px)`,
-              top: `calc(${deliveryMarker.y.toFixed(2)}% - 20px)`,
-            }}
-          >
-            <svg width="20" height="28" viewBox="0 0 20 28" fill="none">
-              <path d="M10 0C4.48 0 0 4.48 0 10C0 17.5 10 28 10 28C10 28 20 17.5 20 10C20 4.48 15.52 0 10 0Z" fill="#ef4444" />
-              <circle cx="10" cy="10" r="4" fill="white" />
-            </svg>
-          </div>
-        )}
-
-        {/* Live driver marker */}
-        {driverMarker && (
-          <div
-            className="absolute z-20 pointer-events-none"
-            style={{
-              left: `calc(${driverMarker.x.toFixed(2)}% - 14px)`,
-              top: `calc(${driverMarker.y.toFixed(2)}% - 14px)`,
-            }}
-          >
-            {/* Pulsing ring */}
-            <span className="absolute inset-0 rounded-full bg-blue-400 opacity-40 animate-ping" />
-            {/* Driver dot */}
-            <div className="relative w-7 h-7 rounded-full bg-blue-600 border-2 border-white shadow-lg flex items-center justify-center">
-              <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5S10.62 6.5 12 6.5s2.5 1.12 2.5 2.5S13.38 11.5 12 11.5z" />
+      <div className={`flex items-center justify-between px-3 py-2 ${
+        driverPos ? 'bg-green-50 dark:bg-green-900/20 border-b border-green-100 dark:border-green-800' :
+        'bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700'
+      }`}>
+        <span className={`flex items-center gap-1.5 text-xs font-medium ${
+          driverPos ? 'text-green-700 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'
+        }`}>
+          {driverPos ? (
+            <>
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500" />
+              </span>
+              Driver location live
+            </>
+          ) : (
+            <>
+              <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
               </svg>
-            </div>
-          </div>
-        )}
-
-        {/* No driver yet overlay */}
-        {!driverPos && (
-          <div className="absolute bottom-3 left-3 bg-white bg-opacity-90 rounded-md px-2.5 py-1 text-xs text-gray-500 shadow">
-            Waiting for driver location…
-          </div>
+              Waiting for driver position…
+            </>
+          )}
+        </span>
+        {distanceKm != null && (
+          <span className="text-xs font-semibold text-green-700 dark:text-green-400 bg-green-100 dark:bg-green-900/40 px-2 py-0.5 rounded-full">
+            {distanceKm < 1
+              ? `${Math.round(distanceKm * 1000)} m away`
+              : `${distanceKm.toFixed(1)} km away`}
+          </span>
         )}
       </div>
 
+      {/* Mapbox GL container */}
+      <div ref={mapContainer} style={{ height: '300px', width: '100%' }} />
+
       {vendorName && (
-        <div className="px-3 py-2 bg-white border-t border-gray-100 text-xs text-gray-500 flex items-center gap-1">
-          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
-          </svg>
-          Delivering from {vendorName}
+        <div className="px-3 py-2 bg-white dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700 text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
+          <span>🍽️</span>
+          Delivering from <span className="font-medium text-gray-700 dark:text-gray-300">{vendorName}</span>
         </div>
       )}
     </div>
