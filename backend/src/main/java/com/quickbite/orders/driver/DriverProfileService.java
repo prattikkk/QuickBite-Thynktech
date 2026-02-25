@@ -157,4 +157,12 @@ public class DriverProfileService {
                 .shiftEndedAt(profile.getShiftEndedAt())
                 .build();
     }
+
+    /**
+     * List all currently online drivers (for vendor runner assignment).
+     */
+    @Transactional(readOnly = true)
+    public java.util.List<DriverProfile> getOnlineDrivers() {
+        return driverProfileRepository.findByIsOnlineTrue();
+    }
 }

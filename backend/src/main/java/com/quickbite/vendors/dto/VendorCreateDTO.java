@@ -23,4 +23,6 @@ public class VendorCreateDTO {
     private BigDecimal lng;
 
     private Map<String, String> openHours;
+
+    private BigDecimal deliveryRadiusKm;
 }

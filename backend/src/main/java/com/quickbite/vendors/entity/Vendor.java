@@ -64,6 +64,9 @@ public class Vendor {
     @Builder.Default
     private BigDecimal rating = BigDecimal.ZERO;
 
+    @Column(name = "delivery_radius_km", precision = 6, scale = 2)
+    private BigDecimal deliveryRadiusKm;
+
     @Column(nullable = false)
     @Builder.Default
     private Boolean active = true;

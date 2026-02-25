@@ -119,6 +119,7 @@ public class VendorController {
                 .lat(dto.getLat())
                 .lng(dto.getLng())
                 .openHours(dto.getOpenHours())
+                .deliveryRadiusKm(dto.getDeliveryRadiusKm())
                 .active(true)
                 .build();
 
@@ -151,6 +152,7 @@ public class VendorController {
         if (dto.getLng() != null) vendor.setLng(dto.getLng());
         if (dto.getOpenHours() != null) vendor.setOpenHours(dto.getOpenHours());
         if (dto.getActive() != null) vendor.setActive(dto.getActive());
+        if (dto.getDeliveryRadiusKm() != null) vendor.setDeliveryRadiusKm(dto.getDeliveryRadiusKm());
 
         vendor = vendorRepository.save(vendor);
         log.info("Vendor profile updated: {} for user {}", vendor.getId(), userId);

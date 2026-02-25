@@ -28,6 +28,7 @@ public class VendorResponseDTO {
     private Map<String, String> openHours;
     private BigDecimal rating;
     private long reviewCount;
+    private BigDecimal deliveryRadiusKm;
     private Boolean active;
     private int menuItemCount;
     private OffsetDateTime createdAt;

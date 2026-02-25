@@ -21,6 +21,7 @@ export default function VendorProfile({ vendor, onProfileUpdated }: Props) {
     description: '',
     address: '',
     openHours: '',
+    deliveryRadiusKm: '',
   });
 
   useEffect(() => {
@@ -34,6 +35,7 @@ export default function VendorProfile({ vendor, onProfileUpdated }: Props) {
               .map(([day, hours]) => `${day}: ${hours}`)
               .join('\n')
           : '',
+        deliveryRadiusKm: vendor.deliveryRadiusKm != null ? String(vendor.deliveryRadiusKm) : '',
       });
     }
   }, [vendor]);
@@ -70,6 +72,7 @@ export default function VendorProfile({ vendor, onProfileUpdated }: Props) {
           description: form.description || undefined,
           address: form.address || undefined,
           openHours,
+          deliveryRadiusKm: form.deliveryRadiusKm ? Number(form.deliveryRadiusKm) : undefined,
         };
         const updated = await vendorService.updateVendorProfile(data);
         success('Restaurant updated!');
@@ -81,6 +84,7 @@ export default function VendorProfile({ vendor, onProfileUpdated }: Props) {
           description: form.description || undefined,
           address: form.address || undefined,
           openHours,
+          deliveryRadiusKm: form.deliveryRadiusKm ? Number(form.deliveryRadiusKm) : undefined,
         };
         const created = await vendorService.createVendorProfile(data);
         success('Restaurant created!');
@@ -156,6 +160,21 @@ export default function VendorProfile({ vendor, onProfileUpdated }: Props) {
           <p className="text-xs text-gray-400 mt-1">One line per day, format: Day: Hours</p>
         </div>
 
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Delivery Radius (km)</label>
+          <input
+            type="number"
+            min="0"
+            max="100"
+            step="0.1"
+            value={form.deliveryRadiusKm}
+            onChange={(e) => setForm({ ...form, deliveryRadiusKm: e.target.value })}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            placeholder="e.g. 5 (leave blank for unlimited)"
+          />
+          <p className="text-xs text-gray-400 mt-1">Maximum distance you deliver to from your restaurant</p>
+        </div>
+
         {vendor && (
           <div className="bg-gray-50 rounded-lg p-4 text-sm text-gray-600">
             <p>
@@ -165,6 +184,9 @@ export default function VendorProfile({ vendor, onProfileUpdated }: Props) {
               <span className={vendor.active ? 'text-green-600' : 'text-red-600'}>
                 {vendor.active ? 'Active' : 'Inactive'}
               </span>
+              {vendor.deliveryRadiusKm != null && (
+                <> &nbsp;|&nbsp; <strong>Delivery Radius:</strong> {vendor.deliveryRadiusKm} km</>
+              )}
             </p>
           </div>
         )}

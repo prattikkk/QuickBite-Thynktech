@@ -22,11 +22,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.Base64;
 
 /**
  * User account management controller.
@@ -58,6 +60,44 @@ public class UserAccountController {
 
         Map<String, Object> profile = buildProfileMap(user);
         return ResponseEntity.ok(ApiResponse.success("Profile retrieved", profile));
+    }
+
+    // ── POST /api/users/me/avatar — upload profile picture ──────────────
+
+    @PostMapping(value = "/me/avatar", consumes = "multipart/form-data")
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'VENDOR', 'DRIVER')")
+    @Operation(summary = "Upload avatar", description = "Upload a profile picture (max 2 MB, jpeg/png/webp)")
+    @Transactional
+    public ResponseEntity<ApiResponse<Map<String, Object>>> uploadAvatar(
+            @RequestParam("photo") MultipartFile photo,
+            Authentication authentication) {
+
+        UUID userId = UUID.fromString(authentication.getName());
+        if (photo.isEmpty()) throw new RuntimeException("Photo file is empty");
+
+        long maxBytes = 2 * 1024 * 1024; // 2 MB
+        if (photo.getSize() > maxBytes) throw new RuntimeException("Photo must be under 2 MB");
+
+        String ct = photo.getContentType();
+        if (ct == null || (!ct.startsWith("image/jpeg") && !ct.startsWith("image/png") && !ct.startsWith("image/webp")))
+            throw new RuntimeException("Only JPEG, PNG, or WEBP images are supported");
+
+        try {
+            byte[] bytes = photo.getBytes();
+            String b64 = Base64.getEncoder().encodeToString(bytes);
+            String dataUrl = "data:" + ct + ";base64," + b64;
+
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+            user.setAvatarUrl(dataUrl);
+            userRepository.save(user);
+
+            log.info("Avatar uploaded for user {}", userId);
+            Map<String, Object> profile = buildProfileMap(user);
+            return ResponseEntity.ok(ApiResponse.success("Avatar uploaded", profile));
+        } catch (java.io.IOException e) {
+            throw new RuntimeException("Failed to read file: " + e.getMessage());
+        }
     }
 
     // ── PUT /api/users/me — update name / phone ──────────────────────
@@ -182,6 +222,7 @@ public class UserAccountController {
         m.put("role", user.getRole().getName());
         m.put("active", user.getActive());
         m.put("emailVerified", user.getEmailVerified() != null && user.getEmailVerified());
+        m.put("avatarUrl", user.getAvatarUrl());
         m.put("createdAt", user.getCreatedAt());
         return m;
     }

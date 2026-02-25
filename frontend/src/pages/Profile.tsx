@@ -3,7 +3,7 @@
  * Phase 5 — API Completeness
  */
 
-import { useState, useEffect, FormEvent } from 'react';
+import { useState, useEffect, FormEvent, useRef } from 'react';
 import { useAuthStore, useToastStore } from '../store';
 import { userService, UserProfile, ProfileUpdateRequest } from '../services/user.service';
 import { authService } from '../services/auth.service';
@@ -19,6 +19,8 @@ export default function Profile() {
   const [deleting, setDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [resendingVerification, setResendingVerification] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState({ name: '', phone: '' });
 
@@ -94,6 +96,22 @@ export default function Profile() {
     }
   };
 
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingAvatar(true);
+    try {
+      const updated = await userService.uploadAvatar(file);
+      setProfile(updated);
+      success('Profile picture updated');
+    } catch (err: any) {
+      showError(err.message || 'Failed to upload picture');
+    } finally {
+      setUploadingAvatar(false);
+      if (avatarInputRef.current) avatarInputRef.current.value = '';
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center py-12">
@@ -104,12 +122,49 @@ export default function Profile() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">My Profile</h1>
+      <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">My Profile</h1>
 
       {/* Profile Form */}
-      <form onSubmit={handleSave} className="bg-white rounded-lg shadow p-6 mb-6 space-y-4">
+      <form onSubmit={handleSave} className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6 space-y-4">
+        {/* Avatar section */}
+        <div className="flex flex-col items-center pb-4 border-b border-gray-100 dark:border-gray-700">
+          <div className="relative group cursor-pointer" onClick={() => avatarInputRef.current?.click()}>
+            {profile?.avatarUrl ? (
+              <img
+                src={profile.avatarUrl}
+                alt="Profile"
+                className="w-24 h-24 rounded-full object-cover border-4 border-primary-100"
+              />
+            ) : (
+              <div className="w-24 h-24 rounded-full bg-primary-100 dark:bg-primary-900 flex items-center justify-center border-4 border-primary-200">
+                <span className="text-3xl font-bold text-primary-600 dark:text-primary-400">
+                  {profile?.name?.charAt(0)?.toUpperCase() || '?'}
+                </span>
+              </div>
+            )}
+            <div className="absolute inset-0 rounded-full bg-black bg-opacity-40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+              {uploadingAvatar ? (
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              )}
+            </div>
+          </div>
+          <p className="text-xs text-gray-400 mt-2">Click to change photo (JPEG/PNG, max 2 MB)</p>
+          <input
+            ref={avatarInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            className="hidden"
+            onChange={handleAvatarUpload}
+          />
+        </div>
+
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
           <input
             type="email"
             value={profile?.email || ''}

@@ -2,11 +2,10 @@
  * VendorDashboard — tabbed layout: Orders | KDS | Menu | Scheduled | Analytics | Inventory | Profile
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { vendorService } from '../services';
 import { OrderDTO, VendorDTO } from '../types';
 import { LoadingSpinner } from '../components';
-import ConfirmDialog from '../components/ConfirmDialog';
 import EmptyState from '../components/EmptyState';
 import { formatCurrencyCompact, formatDateTime } from '../utils';
 import { useToastStore } from '../store';
@@ -18,6 +17,24 @@ import InventoryManagement from '../components/InventoryManagement';
 
 type Tab = 'orders' | 'kds' | 'menu' | 'scheduled' | 'analytics' | 'inventory' | 'profile';
 
+// ── Canned stock messages ─────────────────────────────────────────────────
+const CANNED_MESSAGES = [
+  'Item out of stock',
+  'Too busy right now',
+  'Closing soon',
+  'Kitchen issue — please reorder later',
+  'Delivery area not covered',
+  'Custom reason…',
+];
+
+// ── Driver type ───────────────────────────────────────────────────────────
+interface OnlineDriver {
+  driverId: string;
+  name: string;
+  vehicleType: string;
+  licensePlate: string | null;
+}
+
 export default function VendorDashboard() {
   const [tab, setTab] = useState<Tab>('orders');
   const [vendor, setVendor] = useState<VendorDTO | null>(null);
@@ -27,14 +44,24 @@ export default function VendorDashboard() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [rejectTarget, setRejectTarget] = useState<string | null>(null);
   const [rejecting, setRejecting] = useState(false);
+  const [rejectMessage, setRejectMessage] = useState('');
+  const [rejectCustom, setRejectCustom] = useState('');
+  // Runner assignment
+  const [assignTarget, setAssignTarget] = useState<string | null>(null);
+  const [onlineDrivers, setOnlineDrivers] = useState<OnlineDriver[]>([]);
+  const [assigningDriver, setAssigningDriver] = useState(false);
+  // Persistent alert: track order IDs that are PLACED and need acknowledgement
+  const [pendingAlertIds, setPendingAlertIds] = useState<Set<string>>(new Set());
+  const alertIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const { success, error: showError } = useToastStore();
 
   // WebSocket hook for real-time KDS updates (M4)
-  useVendorOrders({
+  const { playAlert } = useVendorOrders({
     vendorId: vendor?.id ?? null,
     enabled: !!vendor,
-    onNewOrder: () => {
+    onNewOrder: (order) => {
       success('New order received!');
+      setPendingAlertIds((prev) => new Set(prev).add(order.id));
       loadOrders();
     },
     onOrderUpdate: () => loadOrders(),
@@ -56,6 +83,28 @@ export default function VendorDashboard() {
       return () => clearInterval(interval);
     }
   }, [tab]);
+
+  // Persistent alert: beep every 3s while there are unacknowledged PLACED orders
+  useEffect(() => {
+    if (pendingAlertIds.size > 0) {
+      if (!alertIntervalRef.current) {
+        alertIntervalRef.current = setInterval(() => {
+          playAlert();
+        }, 3000);
+      }
+    } else {
+      if (alertIntervalRef.current) {
+        clearInterval(alertIntervalRef.current);
+        alertIntervalRef.current = null;
+      }
+    }
+    return () => {
+      if (alertIntervalRef.current) {
+        clearInterval(alertIntervalRef.current);
+        alertIntervalRef.current = null;
+      }
+    };
+  }, [pendingAlertIds.size, playAlert]);
 
   const loadVendorProfile = async () => {
     try {
@@ -87,6 +136,12 @@ export default function VendorDashboard() {
     try {
       setActionLoading(orderId);
       await vendorService.acceptOrder(orderId);
+      // Dismiss persistent alert for this order
+      setPendingAlertIds((prev) => {
+        const next = new Set(prev);
+        next.delete(orderId);
+        return next;
+      });
       success('Order accepted');
       loadOrders();
     } catch (err: any) {
@@ -97,15 +152,25 @@ export default function VendorDashboard() {
   };
 
   const handleReject = async (orderId: string) => {
+    setRejectMessage('');
+    setRejectCustom('');
     setRejectTarget(orderId);
   };
 
   const confirmReject = async () => {
     if (!rejectTarget) return;
+    const reason = rejectMessage === 'Custom reason…' || rejectMessage === ''
+      ? (rejectCustom.trim() || 'Rejected by vendor')
+      : rejectMessage;
     try {
       setRejecting(true);
       setActionLoading(rejectTarget);
-      await vendorService.rejectOrder(rejectTarget, 'Rejected by vendor');
+      await vendorService.rejectOrder(rejectTarget, reason);
+      setPendingAlertIds((prev) => {
+        const next = new Set(prev);
+        next.delete(rejectTarget);
+        return next;
+      });
       success('Order rejected');
       loadOrders();
     } catch (err: any) {
@@ -114,6 +179,32 @@ export default function VendorDashboard() {
       setActionLoading(null);
       setRejecting(false);
       setRejectTarget(null);
+    }
+  };
+
+  // Open runner assignment modal
+  const handleOpenAssign = async (orderId: string) => {
+    setAssignTarget(orderId);
+    try {
+      const drivers = await vendorService.getOnlineDrivers();
+      setOnlineDrivers(drivers);
+    } catch {
+      setOnlineDrivers([]);
+    }
+  };
+
+  const handleAssignDriver = async (driverId: string) => {
+    if (!assignTarget) return;
+    try {
+      setAssigningDriver(true);
+      await vendorService.assignDriverToOrder(assignTarget, driverId);
+      success('Runner assigned!');
+      setAssignTarget(null);
+      loadOrders();
+    } catch (err: any) {
+      showError(err.message || 'Failed to assign runner');
+    } finally {
+      setAssigningDriver(false);
     }
   };
 
@@ -208,10 +299,12 @@ export default function VendorDashboard() {
             loading={ordersLoading}
             actionLoading={actionLoading}
             vendor={vendor}
+            pendingAlertIds={pendingAlertIds}
             onAccept={handleAccept}
             onReject={handleReject}
             onMarkPreparing={handleMarkPreparing}
             onMarkReady={handleMarkReady}
+            onAssignRunner={handleOpenAssign}
           />
         )}
 
@@ -269,17 +362,101 @@ export default function VendorDashboard() {
           />
         )}
 
-        {/* Reject Confirmation Dialog */}
-        <ConfirmDialog
-          open={!!rejectTarget}
-          title="Reject Order"
-          message="Are you sure you want to reject this order? The customer will be notified."
-          confirmLabel="Reject"
-          variant="danger"
-          loading={rejecting}
-          onConfirm={confirmReject}
-          onCancel={() => setRejectTarget(null)}
-        />
+        {/* Reject Confirmation Dialog with stock messages */}
+        {rejectTarget && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-sm w-full p-6 space-y-4">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">Reject Order</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Choose a stock message or enter a custom reason:
+              </p>
+              <div className="space-y-2">
+                {CANNED_MESSAGES.map((msg) => (
+                  <button
+                    key={msg}
+                    onClick={() => setRejectMessage(msg)}
+                    className={`w-full text-left px-3 py-2 rounded-lg border text-sm transition-colors ${
+                      rejectMessage === msg
+                        ? 'border-red-500 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300'
+                        : 'border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
+                    }`}
+                  >
+                    {msg}
+                  </button>
+                ))}
+              </div>
+              {(rejectMessage === 'Custom reason…' || (rejectMessage === '' && true)) && (
+                <input
+                  type="text"
+                  placeholder="Custom reason (optional)"
+                  value={rejectCustom}
+                  onChange={(e) => setRejectCustom(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-sm dark:bg-gray-700 dark:text-white"
+                />
+              )}
+              <div className="flex gap-2 pt-2">
+                <button
+                  onClick={confirmReject}
+                  disabled={rejecting}
+                  className="flex-1 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 disabled:opacity-50 text-sm"
+                >
+                  {rejecting ? 'Rejecting…' : 'Confirm Reject'}
+                </button>
+                <button
+                  onClick={() => setRejectTarget(null)}
+                  className="flex-1 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg font-medium hover:bg-gray-300 text-sm"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Runner assignment modal */}
+        {assignTarget && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-sm w-full p-6 space-y-4">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">Assign Runner</h3>
+              {onlineDrivers.length === 0 ? (
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  No online runners available right now. Runners must start their shift to appear here.
+                </p>
+              ) : (
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {onlineDrivers.map((d) => (
+                    <button
+                      key={d.driverId}
+                      onClick={() => handleAssignDriver(d.driverId)}
+                      disabled={assigningDriver}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-green-50 dark:hover:bg-green-900/20 disabled:opacity-50 transition-colors text-left"
+                    >
+                      <div className="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center text-green-700 font-semibold text-sm flex-shrink-0">
+                        {d.name?.charAt(0)?.toUpperCase() || 'D'}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-gray-900 dark:text-white text-sm">{d.name}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          {d.vehicleType}{d.licensePlate ? ` · ${d.licensePlate}` : ''}
+                        </p>
+                      </div>
+                      <span className="flex items-center gap-1 text-xs text-green-600">
+                        <span className="w-2 h-2 rounded-full bg-green-500" />
+                        Online
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              <button
+                onClick={() => setAssignTarget(null)}
+                className="w-full py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg font-medium hover:bg-gray-300 text-sm"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -292,10 +469,12 @@ interface OrdersTabProps {
   loading: boolean;
   actionLoading: string | null;
   vendor: VendorDTO | null;
+  pendingAlertIds: Set<string>;
   onAccept: (id: string) => void;
   onReject: (id: string) => void;
   onMarkPreparing: (id: string) => void;
   onMarkReady: (id: string) => void;
+  onAssignRunner: (id: string) => void;
 }
 
 function OrdersTab({
@@ -303,10 +482,12 @@ function OrdersTab({
   loading,
   actionLoading,
   vendor,
+  pendingAlertIds,
   onAccept,
   onReject,
   onMarkPreparing,
   onMarkReady,
+  onAssignRunner,
 }: OrdersTabProps) {
   if (!vendor) {
     return (
@@ -345,11 +526,21 @@ function OrdersTab({
   return (
     <div className="space-y-4">
       {sorted.map((order) => (
-        <div key={order.id} className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+        <div
+          key={order.id}
+          className={`bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 transition-all ${
+            pendingAlertIds.has(order.id) ? 'ring-2 ring-red-500 animate-pulse-border' : ''
+          }`}
+        >
           <div className="flex justify-between items-start mb-4">
             <div>
-              <h3 className="text-lg font-bold">
+              <h3 className="text-lg font-bold flex items-center gap-2">
                 Order #{order.orderNumber || order.id.substring(0, 8)}
+                {pendingAlertIds.has(order.id) && (
+                  <span className="px-2 py-0.5 bg-red-500 text-white text-xs rounded-full animate-pulse">
+                    NEW
+                  </span>
+                )}
               </h3>
               <p className="text-sm text-gray-600 dark:text-gray-300">{formatDateTime(order.createdAt)}</p>
               <p className="text-sm text-gray-900 dark:text-white mt-1">{order.customerName}</p>
@@ -416,6 +607,16 @@ function OrdersTab({
                   className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
                 >
                   Start Preparing
+                </button>
+              )}
+
+              {(order.status === 'READY' || order.status === 'ACCEPTED') && !order.driverId && (
+                <button
+                  onClick={() => onAssignRunner(order.id)}
+                  disabled={actionLoading === order.id}
+                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+                >
+                  🛵 Assign Runner
                 </button>
               )}
 

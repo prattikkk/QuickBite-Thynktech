@@ -21,6 +21,7 @@ export { default as StarRating } from './StarRating';
 export { default as ReviewForm } from './ReviewForm';
 export { default as VendorReviews } from './VendorReviews';
 export { default as MapView } from './MapView';
+export { default as LiveMapView } from './LiveMapView';
 export { default as ConfirmDialog } from './ConfirmDialog';
 export { default as Skeleton, SkeletonCard, SkeletonTable, SkeletonKpiCards } from './Skeleton';
 export { default as EmptyState } from './EmptyState';

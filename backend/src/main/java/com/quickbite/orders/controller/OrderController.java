@@ -223,6 +223,24 @@ public class OrderController {
     }
 
     /**
+     * Vendor assigns a specific runner (driver) to a READY order.
+     * POST /api/orders/{id}/vendor/assign-driver?driverId=UUID
+     */
+    @PostMapping("/{id}/vendor/assign-driver")
+    @PreAuthorize("hasRole('VENDOR')")
+    @Operation(summary = "Vendor assign driver", description = "Vendor manually assigns an online driver to a READY order")
+    public ResponseEntity<ApiResponse<OrderResponseDTO>> vendorAssignDriver(
+            @PathVariable UUID id,
+            @RequestParam UUID driverId,
+            Authentication authentication
+    ) {
+        UUID actorId = extractUserId(authentication);
+        log.info("Vendor {} assigning driver {} to order {}", actorId, driverId, id);
+        OrderResponseDTO order = orderService.assignDriverManually(id, driverId, actorId);
+        return ResponseEntity.ok(ApiResponse.success("Driver assigned successfully", order));
+    }
+
+    /**
      * Reorder — create a new order by cloning items from a previous order.
      */
     @PostMapping("/{id}/reorder")

@@ -280,6 +280,62 @@ public class DriverController {
                 dto.isOnline() ? "You are now online" : "You are now offline", profile));
     }
 
+    // ── Vendor-facing endpoints ──────────────────────────────────────
+
+    /**
+     * List currently online drivers (accessible to VENDOR and ADMIN for runner assignment).
+     */
+    @GetMapping("/online")
+    @PreAuthorize("hasAnyRole('VENDOR', 'ADMIN')")
+    @Operation(summary = "Online drivers", description = "List online drivers available for assignment")
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getOnlineDrivers() {
+        List<com.quickbite.orders.driver.DriverProfile> online = driverProfileService.getOnlineDrivers();
+        List<Map<String, Object>> list = online.stream().map(dp -> {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("driverId", dp.getUser() != null ? dp.getUser().getId() : null);
+            m.put("name", dp.getUser() != null ? dp.getUser().getName() : null);
+            m.put("vehicleType", dp.getVehicleType());
+            m.put("licensePlate", dp.getLicensePlate());
+            return m;
+        }).collect(Collectors.toList());
+        return ResponseEntity.ok(ApiResponse.success("Online drivers", list));
+    }
+
+    /**
+     * Get current driver GPS position for a given order (Customer/Vendor tracking).
+     */
+    @GetMapping("/orders/{orderId}/location")
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'VENDOR', 'ADMIN')")
+    @Operation(summary = "Driver location for order", description = "Get the driver's current GPS position for an order")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getDriverLocationForOrder(
+            @PathVariable UUID orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found"));
+        if (order.getDriver() == null) {
+            return ResponseEntity.ok(ApiResponse.success("No driver assigned", null));
+        }
+        UUID driverId = order.getDriver().getId();
+        com.quickbite.orders.driver.DriverLocationDTO loc = driverLocationService.getLastLocation(driverId);
+        if (loc == null) {
+            // Fall back to profile lat/lng
+            com.quickbite.orders.driver.DriverProfile dp = driverProfileService.getOrCreateProfile(driverId);
+            if (dp.getCurrentLat() != null && dp.getCurrentLng() != null) {
+                Map<String, Object> m = new LinkedHashMap<>();
+                m.put("lat", dp.getCurrentLat());
+                m.put("lng", dp.getCurrentLng());
+                m.put("driverId", driverId);
+                return ResponseEntity.ok(ApiResponse.success("Driver location (profile)", m));
+            }
+            return ResponseEntity.ok(ApiResponse.success("Driver location not available", null));
+        }
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("lat", loc.getLat());
+        m.put("lng", loc.getLng());
+        m.put("driverId", driverId);
+        m.put("recordedAt", loc.getRecordedAt());
+        return ResponseEntity.ok(ApiResponse.success("Driver location", m));
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────
 
     private Map<String, Object> orderSummary(Order o) {

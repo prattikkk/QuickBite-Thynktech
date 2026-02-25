@@ -101,6 +101,18 @@ export const vendorService = {
     return api.patch(`/orders/${orderId}/status`, { status: 'READY' });
   },
 
+  /** GET /api/drivers/online — list online drivers for vendor runner assignment */
+  getOnlineDrivers: async (): Promise<Array<{ driverId: string; name: string; vehicleType: string; licensePlate: string | null }>> => {
+    const response = await api.get<any, any>('/drivers/online');
+    const data = response?.data ?? response;
+    return Array.isArray(data) ? data : [];
+  },
+
+  /** POST /api/orders/{id}/vendor/assign-driver — vendor assigns a runner */
+  assignDriverToOrder: async (orderId: string, driverId: string): Promise<any> => {
+    return api.post(`/orders/${orderId}/vendor/assign-driver`, null, { params: { driverId } });
+  },
+
   /** Get scheduled orders for a vendor */
   getScheduledOrders: async (vendorId: string): Promise<any[]> => {
     const response = await api.get<any, any>(`/vendors/${vendorId}/scheduled-orders`);

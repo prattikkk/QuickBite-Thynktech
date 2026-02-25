@@ -7,7 +7,8 @@ import { useParams, Link } from 'react-router-dom';
 import { orderService } from '../services';
 import { useOrderUpdates } from '../hooks';
 import { OrderDTO, OrderStatus } from '../types';
-import { LoadingSpinner, DeliveryProofDisplay, ReviewForm, MapView } from '../components';
+import { LoadingSpinner, DeliveryProofDisplay, ReviewForm } from '../components';
+import LiveMapView from '../components/LiveMapView';
 import ChatWindow from '../components/ChatWindow';
 import { formatCurrencyCompact, formatDateTime } from '../utils';
 import { useToastStore } from '../store';
@@ -261,11 +262,12 @@ export default function OrderTrack() {
             <DeliveryProofDisplay orderId={id} />
           )}
 
-          {/* Map View — Phase 3.6 */}
-          {!['CANCELLED', 'REJECTED'].includes(order.status) && (
+          {/* Map View — Phase 3.6 + Live Driver Marker */}
+          {!['CANCELLED', 'REJECTED'].includes(order.status) && id && (
             <div className="mt-6">
               <h3 className="font-semibold text-gray-900 mb-3">Delivery Map</h3>
-              <MapView
+              <LiveMapView
+                orderId={id}
                 deliveryLat={order.deliveryAddress?.lat}
                 deliveryLng={order.deliveryAddress?.lng}
                 vendorLat={order.vendorLat}

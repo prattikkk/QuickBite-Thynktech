@@ -2,8 +2,9 @@
  * DriverDashboard page — Phase 2 enhanced with live location, shift management, and GPS indicator.
  */
 
-import { useState, useEffect, FormEvent } from 'react';
+import { useState, useEffect, FormEvent, useRef } from 'react';
 import { driverService, type DriverOrderSummary, type DriverProfileDTO } from '../services/driver.service';
+import { userService } from '../services/user.service';
 import { OrderDTO } from '../types';
 import { LoadingSpinner } from '../components';
 import ProofCaptureModal from '../components/ProofCaptureModal';
@@ -37,6 +38,9 @@ export default function DriverDashboard() {
   const [editVehicle, setEditVehicle] = useState('');
   const [editPlate, setEditPlate] = useState('');
   const [profileSaving, setProfileSaving] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     loadOrders();
@@ -54,6 +58,26 @@ export default function DriverDashboard() {
       setEditPlate(p.licensePlate || '');
     } catch {
       // Profile endpoint may 404 on first load; ignore
+    }
+    try {
+      const up = await userService.getProfile();
+      setAvatarUrl(up.avatarUrl ?? null);
+    } catch { /* ignore */ }
+  };
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingAvatar(true);
+    try {
+      const updated = await userService.uploadAvatar(file);
+      setAvatarUrl(updated.avatarUrl ?? null);
+      success('Profile photo updated!');
+    } catch {
+      showError('Failed to upload photo.');
+    } finally {
+      setUploadingAvatar(false);
+      if (avatarInputRef.current) avatarInputRef.current.value = '';
     }
   };
 
@@ -534,6 +558,30 @@ export default function DriverDashboard() {
               <h2 className="text-xl font-bold text-gray-900 mb-4">Driver Profile</h2>
               {profile ? (
                 <form onSubmit={handleProfileSave} className="space-y-4">
+                  {/* Avatar upload */}
+                  <div className="flex flex-col items-center mb-2">
+                    <div
+                      className="relative w-24 h-24 rounded-full cursor-pointer group"
+                      onClick={() => !uploadingAvatar && avatarInputRef.current?.click()}
+                    >
+                      {avatarUrl ? (
+                        <img src={avatarUrl} alt="avatar" className="w-24 h-24 rounded-full object-cover border-2 border-primary-300" />
+                      ) : (
+                        <div className="w-24 h-24 rounded-full bg-primary-100 flex items-center justify-center text-3xl font-bold text-primary-600 border-2 border-primary-200">
+                          {profile.name?.charAt(0).toUpperCase() || 'D'}
+                        </div>
+                      )}
+                      <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        {uploadingAvatar ? (
+                          <svg className="animate-spin h-6 w-6 text-white" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
+                        ) : (
+                          <svg className="h-7 w-7 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                        )}
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">Click to change photo</p>
+                    <input ref={avatarInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleAvatarUpload} />
+                  </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
                     <p className="text-gray-900">{profile.name}</p>

@@ -15,6 +15,7 @@ export interface VendorDTO {
   reviewCount: number;
   active: boolean;
   menuItemCount: number;
+  deliveryRadiusKm?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -56,6 +57,7 @@ export interface VendorCreateRequest {
   lat?: number;
   lng?: number;
   openHours?: Record<string, string>;
+  deliveryRadiusKm?: number;
 }
 
 /** Request body to update a restaurant profile */
@@ -67,6 +69,7 @@ export interface VendorUpdateRequest {
   lng?: number;
   openHours?: Record<string, string>;
   active?: boolean;
+  deliveryRadiusKm?: number;
 }
 
 /** Request body to create/update a menu item */

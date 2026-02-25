@@ -21,4 +21,6 @@ public class VendorUpdateDTO {
     private Map<String, String> openHours;
 
     private Boolean active;
+
+    private BigDecimal deliveryRadiusKm;
 }

@@ -44,6 +44,9 @@ public class User {
     @Column(length = 20)
     private String phone;
 
+    @Column(name = "avatar_url", columnDefinition = "text")
+    private String avatarUrl;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "role_id", nullable = false)
     private Role role;

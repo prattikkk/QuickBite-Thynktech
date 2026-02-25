@@ -12,6 +12,7 @@ export interface UserProfile {
   role: string;
   active: boolean;
   emailVerified: boolean;
+  avatarUrl?: string | null;
   createdAt: string;
 }
 
@@ -50,6 +51,16 @@ export const userService = {
   /** DELETE /api/users/me */
   deleteAccount: async (): Promise<void> => {
     await api.delete('/users/me');
+  },
+
+  /** POST /api/users/me/avatar — multipart photo upload */
+  uploadAvatar: async (file: File): Promise<UserProfile> => {
+    const formData = new FormData();
+    formData.append('photo', file);
+    const response = await api.post<any, UserProfile>('/users/me/avatar', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response;
   },
 };
 

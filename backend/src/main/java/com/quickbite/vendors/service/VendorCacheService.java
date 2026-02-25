@@ -88,6 +88,7 @@ public class VendorCacheService {
                 .openHours(vendor.getOpenHours())
                 .rating(vendor.getRating())
                 .reviewCount(reviewRepository.countByVendorIdAndHiddenFalse(vendor.getId()))
+                .deliveryRadiusKm(vendor.getDeliveryRadiusKm())
                 .active(vendor.getActive())
                 .menuItemCount(vendor.getMenuItems() != null ? vendor.getMenuItems().size() : 0)
                 .createdAt(vendor.getCreatedAt())
