@@ -7,6 +7,7 @@ import { driverService, type DriverOrderSummary, type DriverProfileDTO } from '.
 import { userService } from '../services/user.service';
 import { OrderDTO } from '../types';
 import { LoadingSpinner } from '../components';
+import LiveMapView from '../components/LiveMapView';
 import ProofCaptureModal from '../components/ProofCaptureModal';
 import ChatWindow from '../components/ChatWindow';
 import { formatCurrencyCompact, formatDateTime } from '../utils';
@@ -382,6 +383,21 @@ export default function DriverDashboard() {
                         </p>
                       </div>
                     </div>
+
+                    {/* Live Map for active deliveries */}
+                    {['PICKED_UP', 'ENROUTE'].includes(order.status) && (
+                      <div className="mb-4">
+                        <LiveMapView
+                          orderId={order.id}
+                          deliveryLat={order.deliveryAddress?.lat}
+                          deliveryLng={order.deliveryAddress?.lng}
+                          vendorLat={order.vendorLat}
+                          vendorLng={order.vendorLng}
+                          vendorName={order.vendorName}
+                          className="h-52"
+                        />
+                      </div>
+                    )}
 
                     <div className="flex justify-between items-center pt-4 border-t">
                       <p className="text-lg font-bold text-primary-600">

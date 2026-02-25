@@ -72,7 +72,7 @@ export const driverService = {
    * Uses dedicated DriverController endpoint
    */
   acceptAvailableOrder: async (orderId: string): Promise<OrderDTO> => {
-    const response = await api.post<any, OrderDTO>(`/drivers/orders/${orderId}/accept`);
+    const response = await api.post<any, OrderDTO>(`/drivers/orders/${orderId}/accept`, {});
     return response;
   },
 
@@ -111,7 +111,7 @@ export const driverService = {
    * Start a shift — go online and begin GPS sharing
    */
   startShift: async (): Promise<DriverProfileDTO> => {
-    const response = await api.post<any, DriverProfileDTO>('/drivers/shift/start');
+    const response = await api.post<any, DriverProfileDTO>('/drivers/shift/start', {});
     return response;
   },
 
@@ -119,7 +119,7 @@ export const driverService = {
    * End shift — go offline and stop GPS sharing
    */
   endShift: async (): Promise<DriverProfileDTO> => {
-    const response = await api.post<any, DriverProfileDTO>('/drivers/shift/end');
+    const response = await api.post<any, DriverProfileDTO>('/drivers/shift/end', {});
     return response;
   },
 
@@ -215,7 +215,7 @@ export const driverService = {
     const response = await api.post<any, DeliveryProofDTO>(
       `/orders/${orderId}/proof/photo`,
       formData,
-      { headers: { 'Content-Type': 'multipart/form-data' } },
+      { headers: { 'Content-Type': undefined } },
     );
     return response;
   },
@@ -224,7 +224,7 @@ export const driverService = {
    * Generate OTP for delivery confirmation.
    */
   generateOtp: async (orderId: string): Promise<DeliveryProofDTO> => {
-    const response = await api.post<any, DeliveryProofDTO>(`/orders/${orderId}/proof/otp/generate`);
+    const response = await api.post<any, DeliveryProofDTO>(`/orders/${orderId}/proof/otp/generate`, {});
     return response;
   },
 

@@ -58,7 +58,7 @@ export const userService = {
     const formData = new FormData();
     formData.append('photo', file);
     const response = await api.post<any, UserProfile>('/users/me/avatar', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
+      headers: { 'Content-Type': undefined },
     });
     return response;
   },

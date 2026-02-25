@@ -70,7 +70,7 @@ export const orderService = {
    * POST /orders/:orderId/accept
    */
   acceptOrder: async (orderId: string): Promise<OrderDTO> => {
-    const response = await api.post<any, OrderDTO>(`/orders/${orderId}/accept`);
+    const response = await api.post<any, OrderDTO>(`/orders/${orderId}/accept`, {});
     return response;
   },
 
@@ -79,7 +79,7 @@ export const orderService = {
    * POST /orders/:orderId/reject
    */
   rejectOrder: async (orderId: string, reason?: string): Promise<OrderDTO> => {
-    const response = await api.post<any, OrderDTO>(`/orders/${orderId}/reject`, null, {
+    const response = await api.post<any, OrderDTO>(`/orders/${orderId}/reject`, {}, {
       params: { reason },
     });
     return response;
@@ -113,7 +113,7 @@ export const orderService = {
    * POST /orders/:orderId/reorder
    */
   reorder: async (orderId: string): Promise<OrderDTO> => {
-    const response = await api.post<any, OrderDTO>(`/orders/${orderId}/reorder`);
+    const response = await api.post<any, OrderDTO>(`/orders/${orderId}/reorder`, {});
     return response;
   },
 
@@ -143,7 +143,7 @@ export const orderService = {
    * POST /orders/:orderId/assign/:driverId
    */
   assignDriver: async (orderId: string, driverId: string): Promise<OrderDTO> => {
-    const response = await api.post<any, OrderDTO>(`/orders/${orderId}/assign/${driverId}`);
+    const response = await api.post<any, OrderDTO>(`/orders/${orderId}/assign/${driverId}`, {});
     return response;
   },
 };

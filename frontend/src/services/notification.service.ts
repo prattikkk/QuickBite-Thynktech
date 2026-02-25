@@ -27,7 +27,7 @@ export const notificationService = {
 
   /** Mark all as read */
   markAllAsRead: async (): Promise<void> => {
-    await api.post('/notifications/read-all');
+    await api.post('/notifications/read-all', {});
   },
 };
 

@@ -86,11 +86,11 @@ export const vendorService = {
   },
 
   acceptOrder: async (orderId: string): Promise<any> => {
-    return api.post(`/orders/${orderId}/accept`);
+    return api.post(`/orders/${orderId}/accept`, {});
   },
 
   rejectOrder: async (orderId: string, reason?: string): Promise<any> => {
-    return api.post(`/orders/${orderId}/reject`, null, { params: { reason } });
+    return api.post(`/orders/${orderId}/reject`, {}, { params: { reason } });
   },
 
   markOrderPreparing: async (orderId: string): Promise<any> => {
@@ -110,7 +110,7 @@ export const vendorService = {
 
   /** POST /api/orders/{id}/vendor/assign-driver — vendor assigns a runner */
   assignDriverToOrder: async (orderId: string, driverId: string): Promise<any> => {
-    return api.post(`/orders/${orderId}/vendor/assign-driver`, null, { params: { driverId } });
+    return api.post(`/orders/${orderId}/vendor/assign-driver`, {}, { params: { driverId } });
   },
 
   /** Get scheduled orders for a vendor */
