@@ -31,7 +31,7 @@ interface UseDriverLocationOptions {
 }
 
 const DEFAULT_SEND_INTERVAL = 5000;
-const DEFAULT_MAX_ACCURACY = 100; // metres
+const DEFAULT_MAX_ACCURACY = 500; // metres — raised for desktop/WiFi-based geolocation
 
 export const useDriverLocation = ({
   enabled = false,
@@ -52,6 +52,7 @@ export const useDriverLocation = ({
 
   const watchIdRef = useRef<number | null>(null);
   const lastSentRef = useRef<number>(0);
+  const hasSentOnceRef = useRef<boolean>(false);
   const enabledRef = useRef(enabled);
   enabledRef.current = enabled;
 
@@ -75,10 +76,15 @@ export const useDriverLocation = ({
   const sendLocation = useCallback(
     async (pos: GeolocationPosition) => {
       const now = Date.now();
-      if (now - lastSentRef.current < sendInterval) return;
-      if (pos.coords.accuracy > maxAccuracy) return;
+      // Always send the first sample so the customer sees the driver immediately
+      const isFirstSample = !hasSentOnceRef.current;
+      if (!isFirstSample) {
+        if (now - lastSentRef.current < sendInterval) return;
+        if (pos.coords.accuracy > maxAccuracy) return;
+      }
 
       lastSentRef.current = now;
+      hasSentOnceRef.current = true;
 
       try {
         await driverService.updateLocation(
@@ -103,6 +109,7 @@ export const useDriverLocation = ({
         navigator.geolocation.clearWatch(watchIdRef.current);
         watchIdRef.current = null;
       }
+      hasSentOnceRef.current = false; // reset so first sample fires on re-enable
       setLocation((prev) => ({ ...prev, isTracking: false }));
       return;
     }

@@ -2,7 +2,6 @@ import { useState, FormEvent } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { LoadingSpinner } from '../components/LoadingSpinner';
-import { useToastStore } from '../store/toastStore';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -12,7 +11,6 @@ export default function Login() {
   const [needsVerification, setNeedsVerification] = useState(false);
   const navigate = useNavigate();
   const { login } = useAuth();
-  const { error: showError } = useToastStore();
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -153,9 +151,9 @@ export default function Login() {
 
           <div className="mt-6 text-center text-sm text-gray-600">
             <p>Test accounts:</p>
-            <p className="mt-1">Customer: alice@quickbite.test / Test@1234</p>
-            <p>Vendor: tastyburger@quickbite.test / Test@1234</p>
-            <p>Driver: driver@quickbite.test / Test@1234</p>
+            <p className="mt-1">Customer: alice@quickbite.test / NewPass@1234</p>
+            <p>Vendor: tastyburger@quickbite.test / NewPass@1234</p>
+            <p>Driver: driver@quickbite.test / NewPass@1234</p>
           </div>
         </div>
       </div>

@@ -1,12 +1,11 @@
 import { useState, FormEvent } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { useToastStore } from '../store/toastStore';
 import { validateEmail, validatePhone, validatePassword } from '../utils/validation';
 
 export default function Register() {
-  const navigate = useNavigate();
   const { register: registerUser } = useAuth();
   const { error: showError } = useToastStore();
   const [registeredEmail, setRegisteredEmail] = useState<string | null>(null);
@@ -72,7 +71,7 @@ export default function Register() {
 
     setLoading(true);
     try {
-      const user = await registerUser({
+      await registerUser({
         email: formData.email,
         password: formData.password,
         name: formData.fullName,
