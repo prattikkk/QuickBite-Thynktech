@@ -11,6 +11,7 @@ import LiveMapView from '../components/LiveMapView';
 import ProofCaptureModal from '../components/ProofCaptureModal';
 import ChatWindow from '../components/ChatWindow';
 import { formatCurrencyCompact, formatDateTime } from '../utils';
+import { haversineKm, bearingTo, formatDistance, type RouteStep } from '../utils/geo';
 import { useToastStore } from '../store';
 import { useDriverLocation } from '../hooks';
 import DriverRatings from '../components/DriverRatings';
@@ -228,6 +229,8 @@ export default function DriverDashboard() {
 
   // Alert customer handler
   const [alertingOrder, setAlertingOrder] = useState<string | null>(null);
+  // Turn-by-turn route steps for the active order map
+  const [routeSteps, setRouteSteps] = useState<Record<string, RouteStep[]>>({});
   const handleAlertCustomer = async (orderId: string) => {
     try {
       setAlertingOrder(orderId);
@@ -238,26 +241,6 @@ export default function DriverDashboard() {
     } finally {
       setAlertingOrder(null);
     }
-  };
-
-  // Haversine distance helper (km)
-  const haversineKm = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
-    const R = 6371;
-    const dLat = ((lat2 - lat1) * Math.PI) / 180;
-    const dLng = ((lng2 - lng1) * Math.PI) / 180;
-    const a =
-      Math.sin(dLat / 2) ** 2 +
-      Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
-    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  };
-
-  // Bearing helper for compass navigation (degrees from north)
-  const bearingTo = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
-    const toRad = (d: number) => (d * Math.PI) / 180;
-    const dLng = toRad(lng2 - lng1);
-    const y = Math.sin(dLng) * Math.cos(toRad(lat2));
-    const x = Math.cos(toRad(lat1)) * Math.sin(toRad(lat2)) - Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(dLng);
-    return ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
   };
 
   if (loading) {
@@ -416,15 +399,22 @@ export default function DriverDashboard() {
             ) : (
               <div className="space-y-4">
                 {orders.map((order) => {
-                  const destLat = order.deliveryAddress?.lat;
-                  const destLng = order.deliveryAddress?.lng;
+                  // Determine navigation target based on order status:
+                  // ASSIGNED / READY → navigate to RESTAURANT (pickup)
+                  // PICKED_UP / ENROUTE → navigate to CUSTOMER (delivery)
+                  const isPickupPhase = ['ASSIGNED', 'READY'].includes(order.status);
+                  const isDeliveryPhase = ['PICKED_UP', 'ENROUTE'].includes(order.status);
+
+                  const targetLat = isPickupPhase ? order.vendorLat : order.deliveryAddress?.lat;
+                  const targetLng = isPickupPhase ? order.vendorLng : order.deliveryAddress?.lng;
+
                   const distKm =
-                    locationState.lat && locationState.lng && destLat && destLng
-                      ? haversineKm(locationState.lat, locationState.lng, destLat, destLng)
+                    locationState.lat && locationState.lng && targetLat && targetLng
+                      ? haversineKm(locationState.lat, locationState.lng, targetLat, targetLng)
                       : null;
                   const bearing =
-                    locationState.lat && locationState.lng && destLat && destLng
-                      ? bearingTo(locationState.lat, locationState.lng, destLat, destLng)
+                    locationState.lat && locationState.lng && targetLat && targetLng
+                      ? bearingTo(locationState.lat, locationState.lng, targetLat, targetLng)
                       : null;
 
                   return (
@@ -449,18 +439,18 @@ export default function DriverDashboard() {
                             {order.customerName}
                             {distKm !== null && (
                               <span className="ml-2 text-xs font-medium text-blue-600">
-                                📍 {distKm < 1 ? `${Math.round(distKm * 1000)}m` : `${distKm.toFixed(1)}km`} away
+                                📍 {distKm < 1 ? `${Math.round(distKm * 1000)}m` : `${distKm.toFixed(1)}km`} to {isPickupPhase ? 'restaurant' : 'customer'}
                               </span>
                             )}
                           </p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        {/* Compass Navigation */}
-                        {bearing !== null && ['PICKED_UP', 'ENROUTE'].includes(order.status) && (
-                          <div className="flex flex-col items-center" title={`${Math.round(bearing)}° from North`}>
+                        {/* Compass Navigation — points to restaurant or customer */}
+                        {bearing !== null && (isPickupPhase || isDeliveryPhase) && (
+                          <div className="flex flex-col items-center" title={`${Math.round(bearing)}° to ${isPickupPhase ? 'restaurant' : 'customer'}`}>
                             <div
-                              className="w-8 h-8 text-red-500"
+                              className={`w-8 h-8 ${isPickupPhase ? 'text-orange-500' : 'text-red-500'}`}
                               style={{ transform: `rotate(${bearing}deg)`, transition: 'transform 0.5s ease' }}
                             >
                               <svg viewBox="0 0 24 24" fill="currentColor">
@@ -477,38 +467,160 @@ export default function DriverDashboard() {
                       </div>
                     </div>
 
-                    <div className="grid md:grid-cols-2 gap-4 mb-4">
-                      <div>
-                        <h4 className="font-medium mb-1">Pickup</h4>
-                        <p className="text-sm text-gray-900">{order.vendorName}</p>
-                      </div>
-                      <div>
-                        <h4 className="font-medium mb-1">Delivery</h4>
-                        <p className="text-sm text-gray-900">{order.deliveryAddress?.line1}</p>
-                        {order.deliveryAddress?.line2 && (
-                          <p className="text-sm text-gray-600">{order.deliveryAddress.line2}</p>
+                    {/* Navigation Guidance Banner */}
+                    {(isPickupPhase || isDeliveryPhase) && (
+                      <div className={`rounded-lg p-3 mb-4 flex items-center justify-between ${
+                        isPickupPhase
+                          ? 'bg-orange-50 border border-orange-200'
+                          : 'bg-blue-50 border border-blue-200'
+                      }`}>
+                        <div className="flex items-center gap-3">
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg ${
+                            isPickupPhase ? 'bg-orange-100' : 'bg-blue-100'
+                          }`}>
+                            {isPickupPhase ? '🍽️' : '📦'}
+                          </div>
+                          <div>
+                            <p className={`text-sm font-bold ${
+                              isPickupPhase ? 'text-orange-800' : 'text-blue-800'
+                            }`}>
+                              {isPickupPhase ? 'Head to Restaurant for Pickup' : 'Deliver to Customer'}
+                            </p>
+                            <p className={`text-xs ${
+                              isPickupPhase ? 'text-orange-600' : 'text-blue-600'
+                            }`}>
+                              {isPickupPhase ? order.vendorName : order.deliveryAddress?.line1}
+                              {!isPickupPhase && order.deliveryAddress?.city && `, ${order.deliveryAddress.city}`}
+                              {distKm !== null && (
+                                <span className="font-semibold ml-1">
+                                  — {distKm < 1 ? `${Math.round(distKm * 1000)}m` : `${distKm.toFixed(1)}km`}
+                                </span>
+                              )}
+                            </p>
+                          </div>
+                        </div>
+                        {targetLat && targetLng && (
+                          <a
+                            href={`https://www.google.com/maps/dir/?api=1&destination=${targetLat},${targetLng}&travelmode=driving`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white shadow-sm transition-colors ${
+                              isPickupPhase
+                                ? 'bg-orange-500 hover:bg-orange-600'
+                                : 'bg-blue-500 hover:bg-blue-600'
+                            }`}
+                          >
+                            🧭 Navigate
+                          </a>
                         )}
-                        <p className="text-sm text-gray-600">
-                          {order.deliveryAddress?.city}, {order.deliveryAddress?.postal}
-                        </p>
+                      </div>
+                    )}
+
+                    {/* Step indicators: Pickup → Delivery */}
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className={`flex-1 rounded-lg p-3 border transition-all ${
+                        isPickupPhase
+                          ? 'border-orange-400 bg-orange-50 ring-2 ring-orange-200'
+                          : 'border-green-300 bg-green-50'
+                      }`}>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white ${
+                            isPickupPhase ? 'bg-orange-500' : 'bg-green-500'
+                          }`}>{isPickupPhase ? '1' : '✓'}</span>
+                          <span className={`text-xs font-semibold ${
+                            isPickupPhase ? 'text-orange-700' : 'text-green-700'
+                          }`}>
+                            {isPickupPhase ? 'PICKUP' : 'PICKED UP'}
+                          </span>
+                        </div>
+                        <p className="text-sm font-medium text-gray-900">{order.vendorName}</p>
+                      </div>
+
+                      <div className="text-gray-300 text-lg">→</div>
+
+                      <div className={`flex-1 rounded-lg p-3 border transition-all ${
+                        isDeliveryPhase
+                          ? 'border-blue-400 bg-blue-50 ring-2 ring-blue-200'
+                          : 'border-gray-200 bg-gray-50'
+                      }`}>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white ${
+                            isDeliveryPhase ? 'bg-blue-500'
+                            : order.status === 'DELIVERED' ? 'bg-green-500'
+                            : 'bg-gray-300'
+                          }`}>{order.status === 'DELIVERED' ? '✓' : '2'}</span>
+                          <span className={`text-xs font-semibold ${
+                            isDeliveryPhase ? 'text-blue-700' : 'text-gray-400'
+                          }`}>DELIVER</span>
+                        </div>
+                        <p className="text-sm text-gray-900">{order.deliveryAddress?.line1 || 'Customer address'}</p>
+                        {order.deliveryAddress?.city && (
+                          <p className="text-xs text-gray-500">{order.deliveryAddress.city}, {order.deliveryAddress.postal}</p>
+                        )}
                       </div>
                     </div>
 
-                    {/* Live Map for active deliveries */}
-                    {['ASSIGNED', 'PICKED_UP', 'ENROUTE'].includes(order.status) && (
+                    {/* Live Map — focused on current destination */}
+                    {(isPickupPhase || isDeliveryPhase) && (
                       <div className="mb-4">
+                        <div className={`text-xs font-semibold px-3 py-1.5 rounded-t-lg ${
+                          isPickupPhase ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'
+                        }`}>
+                          {isPickupPhase ? '🍽️ Navigating to Restaurant' : '📍 Navigating to Customer'}
+                        </div>
                         <LiveMapView
                           orderId={order.id}
-                          deliveryLat={order.deliveryAddress?.lat}
-                          deliveryLng={order.deliveryAddress?.lng}
+                          deliveryLat={isDeliveryPhase ? order.deliveryAddress?.lat : undefined}
+                          deliveryLng={isDeliveryPhase ? order.deliveryAddress?.lng : undefined}
                           vendorLat={order.vendorLat}
                           vendorLng={order.vendorLng}
                           vendorName={order.vendorName}
                           driverLat={locationState.lat ?? undefined}
                           driverLng={locationState.lng ?? undefined}
                           isDriverView={true}
-                          className="h-52"
+                          hideVendor={isDeliveryPhase}
+                          fetchSteps={true}
+                          showTrafficToggle={true}
+                          onRouteUpdate={(info) => {
+                            if (info?.steps && info.steps.length > 0) {
+                              setRouteSteps((prev) => ({ ...prev, [order.id]: info.steps! }));
+                            }
+                          }}
+                          className="h-56 rounded-b-lg"
                         />
+                        {/* Turn-by-turn instruction overlay */}
+                        {routeSteps[order.id] && routeSteps[order.id].length > 0 && (
+                          <div className="bg-gray-900 text-white px-4 py-3 rounded-b-lg flex items-center gap-3">
+                            <div className="flex-shrink-0 w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-lg">
+                              {(() => {
+                                const step = routeSteps[order.id][0];
+                                const m = step.maneuver;
+                                if (m.type === 'turn' && m.modifier === 'left') return '↰';
+                                if (m.type === 'turn' && m.modifier === 'right') return '↱';
+                                if (m.type === 'turn' && m.modifier === 'slight left') return '↖';
+                                if (m.type === 'turn' && m.modifier === 'slight right') return '↗';
+                                if (m.type === 'fork' || m.type === 'off ramp') return '⤴';
+                                if (m.type === 'roundabout' || m.type === 'rotary') return '↻';
+                                if (m.type === 'merge') return '⤵';
+                                if (m.type === 'arrive') return '🏁';
+                                if (m.type === 'depart') return '▶';
+                                return '⬆';
+                              })()}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-sm truncate">{routeSteps[order.id][0].instruction}</p>
+                              <p className="text-xs text-gray-400">
+                                {formatDistance(routeSteps[order.id][0].distanceMeters / 1000)}
+                                {routeSteps[order.id].length > 1 && (
+                                  <span className="ml-2 text-gray-500">
+                                    then: {routeSteps[order.id][1].instruction.substring(0, 40)}
+                                    {routeSteps[order.id][1].instruction.length > 40 ? '…' : ''}
+                                  </span>
+                                )}
+                              </p>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
 

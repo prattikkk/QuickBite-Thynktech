@@ -19,6 +19,7 @@ import SockJS from 'sockjs-client';
 import api from '../services/api';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
+import { haversineKm, fetchRoute, formatDistance } from '../utils/geo';
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || '';
 
@@ -46,20 +47,18 @@ interface LiveMapViewProps {
   isDriverView?: boolean;
   /** Additional markers to render (e.g. all assigned order destinations) */
   extraMarkers?: ExtraMarker[];
+  /** When true, hides the vendor marker and excludes vendor from the route line */
+  hideVendor?: boolean;
+  /** Callback fired when road-based route info updates */
+  onRouteUpdate?: (info: { distanceKm: number; durationMin: number; steps?: import('../utils/geo').RouteStep[] } | null) => void;
+  /** Request turn-by-turn steps from Directions API (default false) */
+  fetchSteps?: boolean;
+  /** Show traffic layer toggle */
+  showTrafficToggle?: boolean;
 }
 
 const USE_WEBSOCKET = import.meta.env.VITE_USE_WEBSOCKET === 'true';
 const WS_URL = import.meta.env.VITE_WS_URL || 'http://localhost:8080/ws';
-
-function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 6371;
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLon = ((lon2 - lon1) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLon / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
 
 export default function LiveMapView({
   orderId,
@@ -73,12 +72,17 @@ export default function LiveMapView({
   className = '',
   isDriverView = false,
   extraMarkers = [],
+  hideVendor = false,
+  onRouteUpdate,
+  fetchSteps = false,
+  showTrafficToggle = false,
 }: LiveMapViewProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const driverMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const clientRef = useRef<Client | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [trafficVisible, setTrafficVisible] = useState(false);
 
   const [driverPos, setDriverPos] = useState<{ lat: number; lng: number } | null>(
     initDriverLat != null && initDriverLng != null
@@ -86,6 +90,10 @@ export default function LiveMapView({
       : null,
   );
   const [mapReady, setMapReady] = useState(false);
+  const [routeInfo, setRouteInfo] = useState<{ distanceKm: number; durationMin: number } | null>(null);
+  const routeFetchRef = useRef<AbortController | null>(null);
+  const lastRouteFetchRef = useRef<number>(0);
+  const [arrived, setArrived] = useState(false);
 
   // Stable callback for updating driver position
   const updateDriverPos = useCallback((lat: number, lng: number) => {
@@ -181,8 +189,33 @@ export default function LiveMapView({
     map.on('load', () => {
       setMapReady(true);
 
+      // ── Traffic layer (initially hidden) ─────────────────────────
+      map.addSource('mapbox-traffic', {
+        type: 'vector',
+        url: 'mapbox://mapbox.mapbox-traffic-v1',
+      });
+      map.addLayer({
+        id: 'traffic-layer',
+        type: 'line',
+        source: 'mapbox-traffic',
+        'source-layer': 'traffic',
+        layout: { 'line-join': 'round', 'line-cap': 'round', visibility: 'none' },
+        paint: {
+          'line-color': [
+            'match', ['get', 'congestion'],
+            'low', '#2dc937',
+            'moderate', '#e7b416',
+            'heavy', '#cc3232',
+            'severe', '#990000',
+            '#aaaaaa',
+          ],
+          'line-width': 2.5,
+          'line-opacity': 0.7,
+        },
+      });
+
       // ── Add vendor marker ────────────────────────────────────────
-      if (vendorLat != null && vendorLng != null) {
+      if (vendorLat != null && vendorLng != null && !hideVendor) {
         const vendorEl = document.createElement('div');
         vendorEl.innerHTML = `
           <div style="display:flex;align-items:center;justify-content:center;width:36px;height:36px;
@@ -252,12 +285,28 @@ export default function LiveMapView({
         type: 'line',
         source: 'route',
         layout: { 'line-join': 'round', 'line-cap': 'round' },
-        paint: { 'line-color': '#3b82f6', 'line-width': 3, 'line-dasharray': [2, 2] },
+        paint: { 'line-color': '#3b82f6', 'line-width': 4, 'line-opacity': 0.8 },
+      });
+      // Dashed fallback layer (shown behind solid when road route is available)
+      map.addSource('route-fallback', {
+        type: 'geojson',
+        data: {
+          type: 'Feature',
+          geometry: { type: 'LineString', coordinates: [] },
+          properties: {},
+        },
+      });
+      map.addLayer({
+        id: 'route-fallback-line',
+        type: 'line',
+        source: 'route-fallback',
+        layout: { 'line-join': 'round', 'line-cap': 'round' },
+        paint: { 'line-color': '#93c5fd', 'line-width': 3, 'line-dasharray': [2, 2], 'line-opacity': 0.5 },
       });
 
       // ── Fit bounds to show all points ────────────────────────────
       const bounds = new mapboxgl.LngLatBounds();
-      if (vendorLat != null && vendorLng != null) bounds.extend([vendorLng, vendorLat]);
+      if (vendorLat != null && vendorLng != null && !hideVendor) bounds.extend([vendorLng, vendorLat]);
       if (deliveryLat != null && deliveryLng != null) bounds.extend([deliveryLng, deliveryLat]);
       extraMarkers.forEach((em) => bounds.extend([em.lng, em.lat]));
       if (!bounds.isEmpty()) {
@@ -275,6 +324,15 @@ export default function LiveMapView({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deliveryLat, deliveryLng, vendorLat, vendorLng, vendorName]);
+
+  // ── Toggle traffic layer visibility ───────────────────────────────
+  useEffect(() => {
+    if (!mapRef.current || !mapReady) return;
+    const map = mapRef.current;
+    if (map.getLayer('traffic-layer')) {
+      map.setLayoutProperty('traffic-layer', 'visibility', trafficVisible ? 'visible' : 'none');
+    }
+  }, [trafficVisible, mapReady]);
 
   // ── Update driver marker when driverPos changes ───────────────────
   useEffect(() => {
@@ -317,38 +375,80 @@ export default function LiveMapView({
       driverMarkerRef.current.setLngLat([driverPos.lng, driverPos.lat]);
     }
 
-    // Update route line: vendor → driver → delivery
+    // Update route line: vendor → driver → delivery (skip vendor if hideVendor)
+    // Use Mapbox Directions API for real road routes, throttled to every 10s
     const routeCoords: [number, number][] = [];
-    if (vendorLat != null && vendorLng != null) routeCoords.push([vendorLng, vendorLat]);
+    if (vendorLat != null && vendorLng != null && !hideVendor) routeCoords.push([vendorLng, vendorLat]);
     routeCoords.push([driverPos.lng, driverPos.lat]);
     if (deliveryLat != null && deliveryLng != null) routeCoords.push([deliveryLng, deliveryLat]);
 
     if (routeCoords.length >= 2) {
-      const routeSource = map.getSource('route') as mapboxgl.GeoJSONSource | undefined;
-      if (routeSource) {
-        routeSource.setData({
+      // Always show dashed straight-line fallback immediately
+      const fallbackSource = map.getSource('route-fallback') as mapboxgl.GeoJSONSource | undefined;
+      if (fallbackSource) {
+        fallbackSource.setData({
           type: 'Feature',
           geometry: { type: 'LineString', coordinates: routeCoords },
           properties: {},
+        });
+      }
+
+      // Fetch real road route (throttled)
+      const now = Date.now();
+      if (now - lastRouteFetchRef.current > 10_000) {
+        lastRouteFetchRef.current = now;
+        if (routeFetchRef.current) routeFetchRef.current.abort();
+        const controller = new AbortController();
+        routeFetchRef.current = controller;
+
+        fetchRoute(routeCoords, { overview: 'full', steps: fetchSteps, signal: controller.signal }).then((result) => {
+          if (result && result.coordinates.length > 0 && mapRef.current) {
+            const routeSource = mapRef.current.getSource('route') as mapboxgl.GeoJSONSource | undefined;
+            if (routeSource) {
+              routeSource.setData({
+                type: 'Feature',
+                geometry: { type: 'LineString', coordinates: result.coordinates },
+                properties: {},
+              });
+            }
+            setRouteInfo({ distanceKm: result.distanceKm, durationMin: result.durationMinutes });
+            onRouteUpdate?.({
+              distanceKm: result.distanceKm,
+              durationMin: result.durationMinutes,
+              steps: result.steps.length > 0 ? result.steps : undefined,
+            });
+          }
         });
       }
     }
 
     // Fit bounds to include driver
     const bounds = new mapboxgl.LngLatBounds();
-    if (vendorLat != null && vendorLng != null) bounds.extend([vendorLng, vendorLat]);
+    if (vendorLat != null && vendorLng != null && !hideVendor) bounds.extend([vendorLng, vendorLat]);
     bounds.extend([driverPos.lng, driverPos.lat]);
     if (deliveryLat != null && deliveryLng != null) bounds.extend([deliveryLng, deliveryLat]);
     if (!bounds.isEmpty()) {
       map.fitBounds(bounds, { padding: 50, maxZoom: 16, duration: 1000 });
     }
-  }, [driverPos, mapReady, vendorLat, vendorLng, deliveryLat, deliveryLng]);
 
-  // Distance badge
-  const distanceKm =
-    driverPos != null && deliveryLat != null && deliveryLng != null
+    // Arrival detection: driver within 200m of delivery
+    if (deliveryLat != null && deliveryLng != null) {
+      const arrivalDist = haversineKm(driverPos.lat, driverPos.lng, deliveryLat, deliveryLng);
+      if (arrivalDist < 0.2 && !arrived) {
+        setArrived(true);
+      } else if (arrivalDist >= 0.3) {
+        setArrived(false);
+      }
+    }
+  }, [driverPos, mapReady, vendorLat, vendorLng, deliveryLat, deliveryLng, hideVendor, arrived]);
+
+  // Distance badge — prefer road-based routeInfo, fallback to Haversine
+  const distanceKm = routeInfo
+    ? routeInfo.distanceKm
+    : driverPos != null && deliveryLat != null && deliveryLng != null
       ? haversineKm(driverPos.lat, driverPos.lng, deliveryLat, deliveryLng)
       : null;
+  const etaMin = routeInfo?.durationMin ?? null;
 
   if (!deliveryLat && !vendorLat) {
     return (
@@ -391,15 +491,47 @@ export default function LiveMapView({
         </span>
         {distanceKm != null && (
           <span className="text-xs font-semibold text-green-700 dark:text-green-400 bg-green-100 dark:bg-green-900/40 px-2 py-0.5 rounded-full">
-            {distanceKm < 1
-              ? `${Math.round(distanceKm * 1000)} m ${isDriverView ? 'to delivery' : 'away'}`
-              : `${distanceKm.toFixed(1)} km ${isDriverView ? 'to delivery' : 'away'}`}
+            {formatDistance(distanceKm)} {isDriverView ? 'to delivery' : 'away'}
+            {etaMin != null && ` · ${etaMin} min`}
           </span>
         )}
       </div>
 
-      {/* Mapbox GL container */}
-      <div ref={mapContainer} style={{ height: '300px', width: '100%' }} />
+      {/* Arrival animation */}
+      {arrived && (
+        <div className="px-3 py-2 bg-green-500 text-white text-center text-sm font-bold animate-pulse border-b border-green-600">
+          🎉 Driver has arrived at the delivery location!
+        </div>
+      )}
+
+      {/* Map container with traffic toggle overlay */}
+      <div className="relative">
+        {/* Loading skeleton shown until map is ready */}
+        {!mapReady && (
+          <div className="absolute inset-0 z-10 bg-gray-100 animate-pulse flex items-center justify-center" style={{ height: '300px' }}>
+            <div className="flex flex-col items-center gap-2 text-gray-400">
+              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+              </svg>
+              <span className="text-xs font-medium">Loading map...</span>
+            </div>
+          </div>
+        )}
+        <div ref={mapContainer} style={{ height: '300px', width: '100%' }} />
+        {showTrafficToggle && mapReady && (
+          <button
+            onClick={() => setTrafficVisible((v) => !v)}
+            className={`absolute top-2 left-2 z-10 px-2.5 py-1.5 rounded-lg text-xs font-medium shadow-md transition-colors ${
+              trafficVisible
+                ? 'bg-green-600 text-white'
+                : 'bg-white/90 text-gray-700 hover:bg-white'
+            }`}
+            title="Toggle traffic layer"
+          >
+            🚦 Traffic {trafficVisible ? 'ON' : 'OFF'}
+          </button>
+        )}
+      </div>
 
       {vendorName && (
         <div className="px-3 py-2 bg-white dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700 text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">

@@ -2,10 +2,12 @@
  * Vendor Profile — create / edit restaurant details
  */
 
-import { useState, useEffect, useRef, FormEvent } from 'react';
+import { useState, useEffect, useRef, FormEvent, useCallback } from 'react';
 import { vendorService } from '../services';
 import { VendorDTO, VendorCreateRequest, VendorUpdateRequest } from '../types';
 import { useToastStore } from '../store';
+import MapAddressPicker from '../components/MapAddressPicker';
+import type { PickedLocation } from '../components/MapAddressPicker';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
@@ -30,6 +32,8 @@ export default function VendorProfile({ vendor, onProfileUpdated }: Props) {
     address: '',
     openHours: '',
     deliveryRadiusKm: '',
+    lat: 0,
+    lng: 0,
   });
 
   useEffect(() => {
@@ -44,6 +48,8 @@ export default function VendorProfile({ vendor, onProfileUpdated }: Props) {
               .join('\n')
           : '',
         deliveryRadiusKm: vendor.deliveryRadiusKm != null ? String(vendor.deliveryRadiusKm) : '',
+        lat: vendor.lat || 0,
+        lng: vendor.lng || 0,
       });
     }
   }, [vendor]);
@@ -143,6 +149,15 @@ export default function VendorProfile({ vendor, onProfileUpdated }: Props) {
     return isNaN(v) || v <= 0 ? 0 : v;
   };
 
+  const handleLocationSelect = useCallback((loc: PickedLocation) => {
+    setForm((prev) => ({
+      ...prev,
+      address: loc.fullAddress,
+      lat: loc.lat,
+      lng: loc.lng,
+    }));
+  }, []);
+
   /** Generate a GeoJSON circle polygon (64 points) */
   function createCircleGeoJSON(lng: number, lat: number, radiusKm: number): GeoJSON.FeatureCollection {
     if (radiusKm <= 0) {
@@ -202,6 +217,8 @@ export default function VendorProfile({ vendor, onProfileUpdated }: Props) {
           name: form.name,
           description: form.description || undefined,
           address: form.address || undefined,
+          lat: form.lat || undefined,
+          lng: form.lng || undefined,
           openHours,
           deliveryRadiusKm: form.deliveryRadiusKm ? Number(form.deliveryRadiusKm) : undefined,
         };
@@ -214,6 +231,8 @@ export default function VendorProfile({ vendor, onProfileUpdated }: Props) {
           name: form.name,
           description: form.description || undefined,
           address: form.address || undefined,
+          lat: form.lat || undefined,
+          lng: form.lng || undefined,
           openHours,
           deliveryRadiusKm: form.deliveryRadiusKm ? Number(form.deliveryRadiusKm) : undefined,
         };
@@ -269,14 +288,26 @@ export default function VendorProfile({ vendor, onProfileUpdated }: Props) {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Restaurant Location <span className="text-red-500">*</span>
+          </label>
+          <MapAddressPicker
+            label="Pin your restaurant location on the map"
+            height="280px"
+            initialLat={form.lat || vendor?.lat || 19.076}
+            initialLng={form.lng || vendor?.lng || 72.8777}
+            onLocationSelect={handleLocationSelect}
+          />
           <input
             type="text"
             value={form.address}
             onChange={(e) => setForm({ ...form, address: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-            placeholder="123 Main St, City"
+            className="w-full mt-2 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            placeholder="Full address (auto-filled from map or enter manually)"
           />
+          <p className="text-xs text-gray-400 mt-1">
+            Drag the pin on the map or search to set your restaurant's exact location
+          </p>
         </div>
 
         <div>

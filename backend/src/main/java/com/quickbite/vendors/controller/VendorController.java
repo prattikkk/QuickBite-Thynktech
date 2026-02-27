@@ -199,4 +199,53 @@ public class VendorController {
         log.info("Vendor {} updated live location to ({}, {})", vendor.getId(), vendor.getLat(), vendor.getLng());
         return ResponseEntity.ok(ApiResponse.success("Location updated", result));
     }
+
+    // ── Delivery radius check ────────────────────────────────────────────
+
+    /**
+     * Check if a delivery address (lat/lng) is within a vendor's delivery radius.
+     * Returns {inRange: boolean, distanceKm: double, radiusKm: double}
+     */
+    @GetMapping("/{id}/delivery-check")
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'VENDOR', 'DRIVER', 'ADMIN')")
+    @Operation(summary = "Check delivery range", description = "Check if lat/lng is within vendor's delivery radius")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> checkDeliveryRange(
+            @PathVariable UUID id,
+            @RequestParam double lat,
+            @RequestParam double lng
+    ) {
+        Vendor vendor = vendorRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Vendor not found: " + id));
+
+        if (vendor.getLat() == null || vendor.getLng() == null) {
+            return ResponseEntity.ok(ApiResponse.success("Vendor location not set", Map.of(
+                    "inRange", true, "distanceKm", 0, "radiusKm", 0, "vendorLocationSet", false
+            )));
+        }
+
+        double distanceKm = haversineDistance(
+                vendor.getLat().doubleValue(), vendor.getLng().doubleValue(), lat, lng);
+        double radiusKm = vendor.getDeliveryRadiusKm() != null ? vendor.getDeliveryRadiusKm().doubleValue() : 10.0;
+        boolean inRange = distanceKm <= radiusKm;
+
+        Map<String, Object> result = new java.util.LinkedHashMap<>();
+        result.put("inRange", inRange);
+        result.put("distanceKm", Math.round(distanceKm * 100.0) / 100.0);
+        result.put("radiusKm", radiusKm);
+        result.put("vendorLocationSet", true);
+
+        return ResponseEntity.ok(ApiResponse.success(
+                inRange ? "Within delivery range" : "Outside delivery range", result));
+    }
+
+    private double haversineDistance(double lat1, double lon1, double lat2, double lon2) {
+        final double R = 6371.0;
+        double dLat = Math.toRadians(lat2 - lat1);
+        double dLon = Math.toRadians(lon2 - lon1);
+        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+                * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
+    }
 }

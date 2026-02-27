@@ -1,6 +1,7 @@
 package com.quickbite.users.controller;
 
 import com.quickbite.common.dto.ApiResponse;
+import com.quickbite.maps.service.MapsService;
 import com.quickbite.users.entity.Address;
 import com.quickbite.users.entity.User;
 import com.quickbite.users.repository.AddressRepository;
@@ -16,6 +17,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -34,6 +36,7 @@ public class AddressController {
 
     private final AddressRepository addressRepository;
     private final UserRepository userRepository;
+    private final MapsService mapsService;
 
     /**
      * Get all addresses for the authenticated user.
@@ -78,6 +81,33 @@ public class AddressController {
                 .isDefault(addresses(userId).isEmpty())
                 .build();
 
+        // Accept lat/lng from frontend (MapAddressPicker)
+        if (body.get("lat") != null && body.get("lng") != null) {
+            address.setLat(new BigDecimal(body.get("lat").toString()));
+            address.setLng(new BigDecimal(body.get("lng").toString()));
+        }
+
+        // Server-side geocode fallback if lat/lng still missing
+        if (address.getLat() == null || address.getLng() == null) {
+            try {
+                String fullAddress = String.join(", ",
+                        address.getLine1() != null ? address.getLine1() : "",
+                        address.getCity() != null ? address.getCity() : "",
+                        address.getState() != null ? address.getState() : "",
+                        address.getPostal() != null ? address.getPostal() : "",
+                        address.getCountry() != null ? address.getCountry() : ""
+                ).replaceAll(",\\s*,", ",").replaceAll("^,\\s*|,\\s*$", "");
+                MapsService.LatLng latLng = mapsService.geocode(fullAddress);
+                if (latLng != null) {
+                    address.setLat(latLng.lat());
+                    address.setLng(latLng.lng());
+                    log.info("Server-side geocoded address to ({}, {})", latLng.lat(), latLng.lng());
+                }
+            } catch (Exception e) {
+                log.warn("Server-side geocoding failed: {}", e.getMessage());
+            }
+        }
+
         address = addressRepository.save(address);
         log.info("Address created: {} for user: {}", address.getId(), userId);
 
@@ -111,6 +141,28 @@ public class AddressController {
         if (body.containsKey("state"))   address.setState((String) body.get("state"));
         if (body.containsKey("postal"))  address.setPostal((String) body.get("postal"));
         if (body.containsKey("country")) address.setCountry(body.get("country").toString());
+        if (body.containsKey("lat") && body.get("lat") != null) address.setLat(new BigDecimal(body.get("lat").toString()));
+        if (body.containsKey("lng") && body.get("lng") != null) address.setLng(new BigDecimal(body.get("lng").toString()));
+
+        // Server-side geocode fallback on update if lat/lng still missing
+        if (address.getLat() == null || address.getLng() == null) {
+            try {
+                String fullAddress = String.join(", ",
+                        address.getLine1() != null ? address.getLine1() : "",
+                        address.getCity() != null ? address.getCity() : "",
+                        address.getState() != null ? address.getState() : "",
+                        address.getPostal() != null ? address.getPostal() : "",
+                        address.getCountry() != null ? address.getCountry() : ""
+                ).replaceAll(",\\s*,", ",").replaceAll("^,\\s*|,\\s*$", "");
+                MapsService.LatLng latLng = mapsService.geocode(fullAddress);
+                if (latLng != null) {
+                    address.setLat(latLng.lat());
+                    address.setLng(latLng.lng());
+                }
+            } catch (Exception e) {
+                log.warn("Geocoding on update failed: {}", e.getMessage());
+            }
+        }
 
         address = addressRepository.save(address);
         log.info("Address updated: {} for user: {}", id, userId);

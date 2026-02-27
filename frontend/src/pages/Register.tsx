@@ -79,18 +79,8 @@ export default function Register() {
         phone: formData.phoneNumber,
         roleName: formData.role
       });
-      // Show email verification notice before redirecting
+      // Show email verification notice — no auto-redirect into the app
       setRegisteredEmail(formData.email);
-      // Auto-redirect after 5 seconds
-      setTimeout(() => {
-        if (user.role === 'VENDOR') {
-          navigate('/vendor/dashboard');
-        } else if (user.role === 'DRIVER') {
-          navigate('/driver/dashboard');
-        } else {
-          navigate('/vendors');
-        }
-      }, 5000);
     } catch (err: any) {
       showError(err.message || 'Registration failed. Please try again.');
     } finally {
@@ -112,17 +102,17 @@ export default function Register() {
             <h2 className="text-2xl font-bold text-gray-900 mb-2">Check your email</h2>
             <p className="text-gray-600 mb-4">
               We've sent a verification email to <strong>{registeredEmail}</strong>.
-              Please verify your email to unlock all features.
+              Please verify your email before you can log in.
             </p>
             <p className="text-sm text-gray-500 mb-6">
-              You'll be redirected automatically in a few seconds...
+              Didn't receive the email? Check your spam folder or request a new link.
             </p>
-            <button
-              onClick={() => navigate('/vendors')}
+            <Link
+              to="/login"
               className="text-primary-600 hover:text-primary-700 font-medium text-sm"
             >
-              Continue to app now &rarr;
-            </button>
+              Go to login &rarr;
+            </Link>
           </div>
         ) : (
         <>

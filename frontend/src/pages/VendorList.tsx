@@ -5,8 +5,9 @@ import { VendorDTO } from '../types/vendor.types';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { FavoriteButton } from '../components';
 import { useToastStore } from '../store/toastStore';
+import { haversineKm, formatDistance } from '../utils/geo';
 
-type SortOption = 'name' | 'rating' | 'reviewCount';
+type SortOption = 'name' | 'rating' | 'reviewCount' | 'nearest';
 
 export default function VendorList() {
   const [vendors, setVendors] = useState<VendorDTO[]>([]);
@@ -14,7 +15,31 @@ export default function VendorList() {
   const [searchQuery, setSearchQuery] = useState('');
   const [minRating, setMinRating] = useState(0);
   const [sortBy, setSortBy] = useState<SortOption>('name');
+  const [userLat, setUserLat] = useState<number | null>(null);
+  const [userLng, setUserLng] = useState<number | null>(null);
   const { error: showError } = useToastStore();
+
+  // Try to get user location for distance sorting
+  useEffect(() => {
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setUserLat(pos.coords.latitude);
+          setUserLng(pos.coords.longitude);
+          // Auto-switch to nearest sort when location is available
+          setSortBy('nearest');
+        },
+        () => { /* Location denied — silently ignore */ },
+        { enableHighAccuracy: false, timeout: 5000, maximumAge: 300000 },
+      );
+    }
+  }, []);
+
+  // Helper: compute vendor distance from user
+  const getVendorDistance = (v: VendorDTO): number | null => {
+    if (userLat == null || userLng == null || !v.lat || !v.lng) return null;
+    return haversineKm(userLat, userLng, v.lat, v.lng);
+  };
 
   // Derive unique cuisine tags from descriptions (simple heuristic)
   const filteredVendors = useMemo(() => {
@@ -40,11 +65,16 @@ export default function VendorList() {
     result = [...result].sort((a, b) => {
       if (sortBy === 'rating') return (b.rating ?? 0) - (a.rating ?? 0);
       if (sortBy === 'reviewCount') return (b.reviewCount ?? 0) - (a.reviewCount ?? 0);
+      if (sortBy === 'nearest' && userLat != null && userLng != null) {
+        const distA = a.lat && a.lng ? haversineKm(userLat, userLng, a.lat, a.lng) : 9999;
+        const distB = b.lat && b.lng ? haversineKm(userLat, userLng, b.lat, b.lng) : 9999;
+        return distA - distB;
+      }
       return a.name.localeCompare(b.name);
     });
 
     return result;
-  }, [vendors, searchQuery, minRating, sortBy]);
+  }, [vendors, searchQuery, minRating, sortBy, userLat, userLng]);
 
   useEffect(() => {
     loadVendors();
@@ -152,6 +182,7 @@ export default function VendorList() {
               <option value="name">Name (A-Z)</option>
               <option value="rating">Highest Rated</option>
               <option value="reviewCount">Most Reviews</option>
+              {userLat != null && <option value="nearest">📍 Nearest</option>}
             </select>
           </div>
           {(minRating > 0 || sortBy !== 'name') && (
@@ -274,6 +305,17 @@ export default function VendorList() {
                       <span className="line-clamp-2">{vendor.address}</span>
                     </div>
                   )}
+
+                  {/* Distance badge */}
+                  {(() => {
+                    const dist = getVendorDistance(vendor);
+                    return dist != null ? (
+                      <div className="flex items-center text-sm text-blue-600 mb-3">
+                        <span className="mr-1">📍</span>
+                        <span className="font-medium">{formatDistance(dist)}</span>
+                      </div>
+                    ) : null;
+                  })()}
 
                   {vendor.menuItemCount > 0 && (
                     <div className="flex items-center text-sm text-gray-600">

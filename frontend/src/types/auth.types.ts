@@ -37,6 +37,7 @@ export interface AuthResponse {
   email: string;
   name: string;
   role: string;
+  emailVerified?: boolean;
 }
 
 export interface RefreshTokenRequest {

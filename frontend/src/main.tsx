@@ -17,6 +17,19 @@ import { initSentry } from './services/sentry'
   }
 })();
 
+// In dev mode, unregister any stale service workers from previous production builds
+if (import.meta.env.DEV && 'serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then(registrations => {
+    registrations.forEach(r => {
+      r.unregister().then(() => console.log('[DEV] Unregistered stale SW:', r.scope));
+    });
+    if (registrations.length > 0) {
+      // Clear caches left behind by the old SW
+      caches.keys().then(keys => keys.forEach(k => caches.delete(k)));
+    }
+  });
+}
+
 // Initialize Sentry error monitoring (no-op if VITE_SENTRY_DSN not set)
 initSentry().catch(console.error);
 

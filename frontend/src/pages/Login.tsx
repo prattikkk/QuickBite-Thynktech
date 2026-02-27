@@ -9,6 +9,7 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [needsVerification, setNeedsVerification] = useState(false);
   const navigate = useNavigate();
   const { login } = useAuth();
   const { error: showError } = useToastStore();
@@ -16,6 +17,7 @@ export default function Login() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setNeedsVerification(false);
 
     try {
       const user = await login({ email, password });
@@ -30,7 +32,9 @@ export default function Login() {
         navigate('/vendors'); // CUSTOMER default
       }
     } catch (err: any) {
-      showError(err.message || 'Login failed. Please try again.');
+      if (err.message === 'EMAIL_NOT_VERIFIED') {
+        setNeedsVerification(true);
+      }
     } finally {
       setLoading(false);
     }
@@ -51,6 +55,24 @@ export default function Login() {
         </div>
 
         <div className="bg-white py-8 px-6 shadow rounded-lg">
+          {needsVerification && (
+            <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-md">
+              <div className="flex items-start gap-3">
+                <svg className="h-5 w-5 text-yellow-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+                <div>
+                  <p className="text-sm font-medium text-yellow-800">Email not verified</p>
+                  <p className="text-sm text-yellow-700 mt-1">
+                    Please check your inbox for a verification link. A new link has been sent to <strong>{email}</strong>.
+                  </p>
+                  <Link to="/verify-email" className="text-sm text-primary-600 hover:text-primary-700 font-medium mt-2 inline-block">
+                    Need a new link? &rarr;
+                  </Link>
+                </div>
+              </div>
+            </div>
+          )}
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">

@@ -121,8 +121,15 @@ public class AuthService {
             }
         }
 
-        // Generate tokens
-        return generateAuthResponse(savedUser);
+        // Do NOT issue tokens — user must verify email first
+        return AuthResponse.builder()
+                .tokenType("Bearer")
+                .userId(savedUser.getId())
+                .email(savedUser.getEmail())
+                .name(savedUser.getName())
+                .role(savedUser.getRole().getName())
+                .emailVerified(false)
+                .build();
     }
 
     /**
@@ -164,6 +171,18 @@ public class AuthService {
 
             if (!user.getActive()) {
                 throw new AuthException("User account is deactivated");
+            }
+
+            // Block login if email is not verified
+            if (!Boolean.TRUE.equals(user.getEmailVerified())) {
+                log.warn("Login blocked — email not verified for user: {}", user.getEmail());
+                // Resend verification email so user can verify
+                try {
+                    passwordResetService.resendEmailVerification(user.getEmail());
+                } catch (Exception ex) {
+                    log.warn("Failed to resend verification email: {}", ex.getMessage());
+                }
+                throw new AuthException("EMAIL_NOT_VERIFIED");
             }
 
             // Reset failed login attempts on successful login
@@ -275,6 +294,7 @@ public class AuthService {
                 .email(user.getEmail())
                 .name(user.getName())
                 .role(user.getRole().getName())
+                .emailVerified(Boolean.TRUE.equals(user.getEmailVerified()))
                 .build();
     }
 
@@ -297,6 +317,7 @@ public class AuthService {
                 .phone(user.getPhone())
                 .role(user.getRole().getName())
                 .status(user.getActive() ? "ACTIVE" : "INACTIVE")
+                .emailVerified(Boolean.TRUE.equals(user.getEmailVerified()))
                 .createdAt(user.getCreatedAt())
                 .build();
     }
@@ -352,6 +373,7 @@ public class AuthService {
                 .email(user.getEmail())
                 .name(user.getName())
                 .role(user.getRole().getName())
+                .emailVerified(Boolean.TRUE.equals(user.getEmailVerified()))
                 .build();
     }
 

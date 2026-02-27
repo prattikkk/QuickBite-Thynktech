@@ -23,5 +23,6 @@ public class UserProfileDTO {
     private String phone;
     private String role;
     private String status;
+    private Boolean emailVerified;
     private OffsetDateTime createdAt;
 }

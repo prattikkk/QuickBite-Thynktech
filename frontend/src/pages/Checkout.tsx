@@ -2,15 +2,17 @@
  * Checkout page with Stripe payment integration
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { useCartStore, useToastStore } from '../store';
 import { addressService, orderService, promoService } from '../services';
+import api from '../services/api';
 import { AddressDTO, PaymentMethod } from '../types';
 import { formatCurrencyCompact } from '../utils';
-import { LoadingSpinner } from '../components';
+import { LoadingSpinner, MapAddressPicker } from '../components';
+import type { PickedLocation } from '../components/MapAddressPicker';
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '');
 
@@ -76,6 +78,48 @@ function CheckoutForm() {
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [newAddress, setNewAddress] = useState<Omit<AddressDTO, 'id'>>(EMPTY_ADDRESS);
   const [savingAddress, setSavingAddress] = useState(false);
+  const [useMapPicker, setUseMapPicker] = useState(true);
+
+  // Out-of-range delivery warning
+  const [rangeWarning, setRangeWarning] = useState<string | null>(null);
+  const [checkingRange, setCheckingRange] = useState(false);
+
+  const checkDeliveryRange = useCallback(async (lat: number | undefined, lng: number | undefined) => {
+    if (!lat || !lng || !vendorId) {
+      setRangeWarning(null);
+      return;
+    }
+    try {
+      setCheckingRange(true);
+      const res = await api.get<any, any>(`/vendors/${vendorId}/delivery-check?lat=${lat}&lng=${lng}`);
+      const data = res?.data ?? res;
+      if (!data.vendorLocationSet) {
+        setRangeWarning(null);
+      } else if (!data.inRange) {
+        setRangeWarning(`This address is ${data.distanceKm?.toFixed(1) || '?'} km from the restaurant (max ${data.radiusKm || 10} km). Delivery may not be available.`);
+      } else {
+        setRangeWarning(null);
+      }
+    } catch {
+      setRangeWarning(null);
+    } finally {
+      setCheckingRange(false);
+    }
+  }, [vendorId]);
+
+  // Check range when selected address changes
+  useEffect(() => {
+    if (deliveryType !== 'DELIVERY' || !selectedAddressId) {
+      setRangeWarning(null);
+      return;
+    }
+    const addr = addresses.find((a) => a.id === selectedAddressId);
+    if (addr?.lat && addr?.lng) {
+      checkDeliveryRange(addr.lat, addr.lng);
+    } else {
+      setRangeWarning(null);
+    }
+  }, [selectedAddressId, deliveryType, addresses, checkDeliveryRange]);
 
   useEffect(() => {
     loadAddresses();
@@ -342,7 +386,55 @@ function CheckoutForm() {
             {/* Inline Add Address Form */}
             {showAddressForm && (
               <div className="border border-primary-200 bg-primary-50 rounded-lg p-4 space-y-3">
-                <h3 className="font-semibold text-gray-800">New Address</h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold text-gray-800">New Address</h3>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setUseMapPicker(true)}
+                      className={`text-xs px-3 py-1 rounded-full font-medium transition-colors ${
+                        useMapPicker
+                          ? 'bg-primary-600 text-white'
+                          : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                      }`}
+                    >
+                      🗺️ Map
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setUseMapPicker(false)}
+                      className={`text-xs px-3 py-1 rounded-full font-medium transition-colors ${
+                        !useMapPicker
+                          ? 'bg-primary-600 text-white'
+                          : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                      }`}
+                    >
+                      ✏️ Manual
+                    </button>
+                  </div>
+                </div>
+
+                {/* Map picker */}
+                {useMapPicker && (
+                  <MapAddressPicker
+                    label="Pin your delivery location"
+                    height="260px"
+                    onLocationSelect={(loc: PickedLocation) => {
+                      setNewAddress({
+                        line1: loc.line1,
+                        line2: loc.line2 || '',
+                        city: loc.city,
+                        state: loc.state,
+                        postal: loc.postal,
+                        country: loc.country || 'IN',
+                        lat: loc.lat,
+                        lng: loc.lng,
+                      });
+                    }}
+                  />
+                )}
+
+                {/* Address fields (auto-filled from map or manual entry) */}
                 <input
                   type="text"
                   placeholder="Address Line 1 *"
@@ -412,6 +504,26 @@ function CheckoutForm() {
               </div>
             )}
           </div>
+          )}
+
+          {/* Out-of-range delivery warning */}
+          {rangeWarning && deliveryType === 'DELIVERY' && (
+            <div className="bg-amber-50 border border-amber-300 rounded-lg p-4 flex items-start gap-3">
+              <span className="text-xl flex-shrink-0 mt-0.5">⚠️</span>
+              <div>
+                <p className="text-amber-800 font-semibold text-sm">Delivery may not be available</p>
+                <p className="text-amber-700 text-sm mt-0.5">{rangeWarning}</p>
+              </div>
+            </div>
+          )}
+          {checkingRange && deliveryType === 'DELIVERY' && (
+            <div className="text-xs text-gray-500 flex items-center gap-1.5 px-1">
+              <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+              </svg>
+              Checking delivery range...
+            </div>
           )}
 
           {/* Payment Method */}

@@ -34,7 +34,13 @@ export const useAuth = () => {
       success('Login successful!');
       return user;
     } catch (err: any) {
-      error(err.message || 'Login failed');
+      // If the error is EMAIL_NOT_VERIFIED, throw with a special marker
+      const msg: string = err.message || 'Login failed';
+      if (msg.includes('EMAIL_NOT_VERIFIED')) {
+        error('Please verify your email before logging in. A new verification link has been sent.');
+        throw new Error('EMAIL_NOT_VERIFIED');
+      }
+      error(msg);
       throw err;
     }
   };
@@ -45,7 +51,8 @@ export const useAuth = () => {
   const register = async (data: RegisterRequest) => {
     try {
       const response = await authService.register(data);
-      // Convert flat response to UserDTO
+      // Registration no longer returns tokens — user must verify email first
+      // Return a minimal user object for the UI to show the verification notice
       const user: UserDTO = {
         id: response.userId,
         email: response.email,
@@ -55,8 +62,8 @@ export const useAuth = () => {
         status: 'ACTIVE',
         createdAt: new Date().toISOString(),
       };
-      setAuth(user, response.accessToken);
-      success('Registration successful!');
+      // Do NOT call setAuth — no token was issued
+      success('Registration successful! Please check your email to verify your account.');
       return user;
     } catch (err: any) {
       const errorMessage = err.message || err.response?.data?.message || 'Registration failed';

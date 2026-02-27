@@ -11,6 +11,7 @@ import { LoadingSpinner, DeliveryProofDisplay, ReviewForm } from '../components'
 import LiveMapView from '../components/LiveMapView';
 import ChatWindow from '../components/ChatWindow';
 import { formatCurrencyCompact, formatDateTime } from '../utils';
+import { formatDistance } from '../utils/geo';
 import { useToastStore } from '../store';
 
 export default function OrderTrack() {
@@ -22,6 +23,9 @@ export default function OrderTrack() {
   const [cancelling, setCancelling] = useState(false);
   const [showChat, setShowChat] = useState(false);
   const { success: showSuccess, error: showError } = useToastStore();
+
+  // Live ETA from road-based route
+  const [liveEta, setLiveEta] = useState<{ distanceKm: number; durationMin: number } | null>(null);
 
   // Tip state
   const [tipAmount, setTipAmount] = useState<number | null>(null);
@@ -225,6 +229,17 @@ export default function OrderTrack() {
                   </span>
                 )}
               </div>
+              {liveEta && (
+                <div className="mt-2 flex items-center gap-2 text-sm text-primary-700">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-primary-500" />
+                  </span>
+                  <span>
+                    Live: driver is {formatDistance(liveEta.distanceKm)} away · ~{liveEta.durationMin} min by road
+                  </span>
+                </div>
+              )}
             </div>
           )}
 
@@ -303,6 +318,7 @@ export default function OrderTrack() {
                 vendorLat={order.vendorLat}
                 vendorLng={order.vendorLng}
                 vendorName={order.vendorName}
+                onRouteUpdate={(info) => setLiveEta(info ? { distanceKm: info.distanceKm, durationMin: info.durationMin } : null)}
                 className="h-64"
               />
             </div>
